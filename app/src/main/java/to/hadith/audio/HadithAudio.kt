@@ -110,6 +110,8 @@ internal fun validateTrustedMediaUrl(value: String): String {
 private val TRUSTED_MEDIA_HOSTS = setOf(
     "pub-4c1d62290e264660b4061d58417926be.r2.dev",
     "cdn.hadith.to",
+    "hadith.to",
+    "www.hadith.to",
 )
 
 /** Fetches the small timing manifest without coupling the network layer to Compose. */
@@ -169,7 +171,7 @@ class HadithTimingRepository {
             audioUrl = resolveHadithAudioUrl(source, root.optString("audio")),
             durationSeconds = root.optDouble("duration", 0.0).toFloat(),
             tokens = tokens,
-            isSynthetic = root.optBoolean("synthetic", false),
+            isSynthetic = source.syntheticOverride ?: root.optBoolean("synthetic", false),
         )
     }
 }
