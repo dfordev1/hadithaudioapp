@@ -33,10 +33,16 @@ jobs:
           gradle-version: '8.13'
 
       - name: Check, test, and assemble
-        run: gradle :app:lintDebug :app:testDebugUnitTest :app:assembleDebug --no-daemon
+        run: gradle :app:lintDebug :app:testDebugUnitTest :app:assembleDebug :app:bundleRelease --no-daemon
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: hadithaudioapp-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+
+      - name: Upload unsigned release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: hadithaudioapp-unsigned-release-aab
+          path: app/build/outputs/bundle/release/*.aab

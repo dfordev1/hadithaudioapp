@@ -6,14 +6,16 @@ A calm, native Android companion for listening to, reading, and studying hadith.
 
 The app opens directly into a hadith instead of a dashboard. The reading surface keeps the Arabic text central and reveals translation, study tools, and navigation only when they are useful.
 
-The MVP includes:
+The app includes:
 
-- real Media3 playback of the opening passage of Sahih al-Bukhari 1
-- synchronized Arabic word highlighting from the Hadith.to timing manifest
+- lazy browsing of all 97 Ṣaḥīḥ al-Bukhārī books and 7,580 corpus records
+- exact-number lookup, including the corpus's alphanumeric report IDs
+- real Media3 playback wherever a Hadith.to timing sidecar is published
+- synchronized highlighting from the timing sidecar's authoritative Arabic stream
 - English, Urdu, and bilingual reading
 - quiet listening and focused study modes
 - an accessible narration-chain disclosure
-- local search and an honest collection roadmap
+- local preview text search plus full-catalog lookup by exact Bukhari number
 - accessible, RTL-aware Jetpack Compose UI
 - a clearly labelled silent timing preview when audio is unavailable
 
@@ -28,9 +30,11 @@ The MVP includes:
 
 ## Status
 
-The sacred-reader MVP is implemented. It deliberately ships one complete interaction slice rather than presenting unavailable collections as finished. Sahih Muslim and Sunan Abi Dawud appear as disabled “coming next” entries.
+The sacred reader and the production Bukhari catalog are implemented. Book payloads load only when opened; English and Urdu translations load only for the selected narration. Sahih Muslim and Sunan Abi Dawud remain disabled “coming next” entries instead of being presented as finished.
 
-The app resolves the production Bukhari timing sidecar and recording from the existing Hadith.to corpus. The player clips the full recording to the displayed opening passage, preserves exact word timing, handles audio focus and headphone disconnects, and labels synthetic narration whenever a timing sidecar declares it.
+The opening offline passage remains available immediately. Catalog records use the production Hadith.to Arabic corpus, official translation endpoints, timing manifests, and recordings. Records without a published sidecar—including current suffix-ID records—stay readable and are labelled audio-unavailable rather than borrowing another narration's recording.
+
+Playback is foreground-only in this release. It handles audio focus and headphone disconnects, but a MediaSession service and notification controls are still required before background playback can be promised.
 
 ## Build
 
@@ -43,11 +47,13 @@ gradle :app:assembleDebug
 Run the full local verification with:
 
 ```bash
-gradle :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
+gradle :app:lintDebug :app:testDebugUnitTest :app:assembleDebug :app:bundleRelease
 ```
 
-Every pull request runs the same checks on GitHub Actions and uploads `hadithaudioapp-debug-apk` as an installable debug artifact. A signed Play Store bundle is intentionally outside this MVP until release signing and store credentials are configured.
+Every pull request runs the same checks on GitHub Actions and uploads an installable debug APK plus an unsigned, minified release AAB. Play Store signing and upload remain secret-backed release steps; no keystore material belongs in this repository.
 
 ## Data boundary
 
-The reader model is local today, while audio and word timings use the existing static Hadith.to corpus contract. Expanding the catalog means adding collection adapters behind `HadithRepository`; the Compose reader and playback UI do not need to be rewritten.
+Arabic catalog data comes from `www.hadith.to`, translations from the versioned Hadith API snapshot on jsDelivr, and timing/audio from the Hadith.to CDN. The app has no accounts, ads, or analytics. Normal CDN/server request logs may still receive network metadata such as an IP address when online content is opened.
+
+Catalog payloads are cached in memory for the current app session. Full-catalog text search and durable offline downloads are intentionally not claimed yet.
