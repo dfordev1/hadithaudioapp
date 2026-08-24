@@ -1,6 +1,7 @@
 package to.hadith.audio
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class HadithModelsTest {
@@ -79,9 +80,15 @@ class HadithModelsTest {
             resolveFirstHadithAudioUrl("0001.mp3"),
         )
         assertEquals(
-            "https://cdn.example.test/hadith.mp3",
-            resolveFirstHadithAudioUrl("https://cdn.example.test/hadith.mp3"),
+            "https://cdn.hadith.to/bukhari/0001.mp3",
+            resolveFirstHadithAudioUrl("https://cdn.hadith.to/bukhari/0001.mp3"),
         )
+        assertThrows(java.io.IOException::class.java) {
+            resolveFirstHadithAudioUrl("http://cdn.hadith.to/bukhari/0001.mp3")
+        }
+        assertThrows(java.io.IOException::class.java) {
+            resolveFirstHadithAudioUrl("https://evil.example/hadith.mp3")
+        }
     }
 
     @Test

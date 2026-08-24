@@ -145,7 +145,7 @@ data class LibraryCollection(
 )
 
 val HadithCollections = listOf(
-    LibraryCollection("Sahih al-Bukhari", "One synced reading", "Open", true),
+    LibraryCollection("Sahih al-Bukhari", "97 books · 7,580 narrations", "Open", true),
     LibraryCollection("Sahih Muslim", "Collection adapter planned", "Coming next", false),
     LibraryCollection("Sunan Abi Dawud", "Collection adapter planned", "Coming next", false),
 )
