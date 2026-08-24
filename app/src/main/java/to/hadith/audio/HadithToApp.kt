@@ -33,8 +33,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Headphones
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
@@ -743,7 +743,7 @@ private fun HadithBottomBar(
                     Icon(
                         imageVector = when (item) {
                             Destination.LISTEN -> Icons.Filled.Headphones
-                            Destination.LIBRARY -> Icons.Filled.MenuBook
+                            Destination.LIBRARY -> Icons.AutoMirrored.Filled.MenuBook
                             Destination.SEARCH -> Icons.Filled.Search
                         },
                         contentDescription = null,

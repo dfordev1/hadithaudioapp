@@ -32,7 +32,11 @@ class HadithModelsTest {
 
     @Test
     fun localRepositorySearchesTextAndReturnsAllForBlankQuery() {
-        val second = FirstHadith.copy(number = "Hadith 2", english = "A believer is sincere.")
+        val second = FirstHadith.copy(
+            number = "Hadith 2",
+            arabic = "الصِّدْقُ",
+            english = "A believer is sincere.",
+        )
         val repository = LocalHadithRepository(listOf(FirstHadith, second))
 
         assertEquals(2, repository.search(" ").size)
