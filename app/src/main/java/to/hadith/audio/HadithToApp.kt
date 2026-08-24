@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -91,20 +92,22 @@ fun HadithToApp() {
     var languageName by rememberSaveable { mutableStateOf(Language.ENGLISH.name) }
     var quietMode by rememberSaveable { mutableStateOf(false) }
     var selectedHadithKey by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedRemoteCollectionSlug by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedRemoteId by rememberSaveable { mutableStateOf<String?>(null) }
     var detailRetry by remember { mutableStateOf(0) }
     var libraryLevelName by rememberSaveable { mutableStateOf(LibraryLevel.COLLECTIONS.name) }
+    var selectedCollectionSlug by rememberSaveable { mutableStateOf("bukhari") }
     var selectedBookNumber by rememberSaveable { mutableStateOf<Int?>(null) }
     var booksRetry by remember { mutableStateOf(0) }
     var bookRetry by remember { mutableStateOf(0) }
-    var booksState by remember { mutableStateOf<CatalogLoad<List<BukhariBook>>>(CatalogLoad.Idle) }
+    var booksState by remember { mutableStateOf<CatalogLoad<List<CatalogBook>>>(CatalogLoad.Idle) }
     var bookState by remember { mutableStateOf<CatalogLoad<List<CatalogHadith>>>(CatalogLoad.Idle) }
     var remoteDetailState by remember {
-        mutableStateOf<CatalogLoad<BukhariHadithDetail>>(CatalogLoad.Idle)
+        mutableStateOf<CatalogLoad<CatalogHadithDetail>>(CatalogLoad.Idle)
     }
     val localRepository = remember { LocalHadithRepository() }
     val entries = remember(localRepository) { localRepository.all() }
-    val catalogRepository = remember { BukhariCatalogRepository() }
+    val catalogRepository = remember { HadithCatalogRepository() }
     val context = LocalContext.current
     val audioController = remember(context) { HadithAudioController(context.applicationContext) }
     val audioState by audioController.state.collectAsStateWithLifecycle()
@@ -113,11 +116,15 @@ fun HadithToApp() {
     val mode = ReadingMode.valueOf(modeName)
     val language = Language.valueOf(languageName)
     val libraryLevel = LibraryLevel.valueOf(libraryLevelName)
+    val selectedCollection = CatalogCollections.first { it.slug == selectedCollectionSlug }
+    val selectedRemoteRef = selectedRemoteCollectionSlug?.let { slug ->
+        selectedRemoteId?.let { id -> CatalogRef(slug, id) }
+    }
     val remoteDetail = when (val state = remoteDetailState) {
         is CatalogLoad.Ready -> state.value
         else -> null
     }
-    val remoteSelectionPending = selectedRemoteId != null
+    val remoteSelectionPending = selectedRemoteRef != null
     val hadith = if (remoteSelectionPending) {
         remoteDetail?.entry
     } else {
@@ -125,26 +132,26 @@ fun HadithToApp() {
     }
     val audioSource = if (remoteSelectionPending) remoteDetail?.audioSource else FIRST_HADITH_AUDIO_SOURCE
 
-    LaunchedEffect(selectedRemoteId, detailRetry) {
-        val id = selectedRemoteId ?: run {
+    LaunchedEffect(selectedRemoteRef, detailRetry) {
+        val ref = selectedRemoteRef ?: run {
             remoteDetailState = CatalogLoad.Idle
             return@LaunchedEffect
         }
         remoteDetailState = CatalogLoad.Loading
         try {
-            val selected = catalogRepository.hadith(id)
+            val selected = catalogRepository.hadith(ref)
             val translations = coroutineScope {
                 val english = async {
-                    translationOrEmpty(catalogRepository, id, "eng")
+                    translationOrEmpty(catalogRepository, ref, "eng")
                 }
                 val urdu = async {
-                    translationOrEmpty(catalogRepository, id, "urd")
+                    translationOrEmpty(catalogRepository, ref, "urd")
                 }
                 english.await() to urdu.await()
             }
-            if (selectedRemoteId == id) {
+            if (selectedRemoteRef == ref) {
                 remoteDetailState = CatalogLoad.Ready(
-                    selected.asBukhariDetail(
+                    selected.asCatalogDetail(
                         english = translations.first,
                         urdu = translations.second,
                     ),
@@ -153,20 +160,20 @@ fun HadithToApp() {
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (failure: Exception) {
-            if (selectedRemoteId == id) {
+            if (selectedRemoteRef == ref) {
                 remoteDetailState = CatalogLoad.Failed(friendlyCatalogError(failure))
             }
         }
     }
 
-    LaunchedEffect(destination, libraryLevel, booksRetry) {
+    LaunchedEffect(destination, libraryLevel, selectedCollectionSlug, booksRetry) {
         if (destination != Destination.LIBRARY || libraryLevel == LibraryLevel.COLLECTIONS) {
             return@LaunchedEffect
         }
         if (booksState is CatalogLoad.Ready) return@LaunchedEffect
         booksState = CatalogLoad.Loading
         try {
-            booksState = CatalogLoad.Ready(catalogRepository.books())
+            booksState = CatalogLoad.Ready(catalogRepository.books(selectedCollectionSlug))
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (failure: Exception) {
@@ -174,7 +181,7 @@ fun HadithToApp() {
         }
     }
 
-    LaunchedEffect(destination, libraryLevel, selectedBookNumber, bookRetry) {
+    LaunchedEffect(destination, libraryLevel, selectedCollectionSlug, selectedBookNumber, bookRetry) {
         val book = selectedBookNumber
         if (
             destination != Destination.LIBRARY ||
@@ -185,7 +192,7 @@ fun HadithToApp() {
         }
         bookState = CatalogLoad.Loading
         try {
-            bookState = CatalogLoad.Ready(catalogRepository.hadiths(book))
+            bookState = CatalogLoad.Ready(catalogRepository.hadiths(selectedCollectionSlug, book))
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (failure: Exception) {
@@ -245,6 +252,7 @@ fun HadithToApp() {
                         modifier = Modifier.padding(innerPadding),
                         onRetry = { detailRetry++ },
                         onBack = {
+                            selectedRemoteCollectionSlug = null
                             selectedRemoteId = null
                             destinationName = Destination.LIBRARY.name
                         },
@@ -293,14 +301,18 @@ fun HadithToApp() {
             Destination.LIBRARY -> when (libraryLevel) {
                 LibraryLevel.COLLECTIONS -> LibraryScreen(
                     modifier = Modifier.padding(innerPadding),
-                    onCollectionSelected = {
+                    onCollectionSelected = { collection ->
+                        selectedCollectionSlug = collection.slug
+                        selectedBookNumber = null
+                        booksState = CatalogLoad.Idle
+                        bookState = CatalogLoad.Idle
                         libraryLevelName = LibraryLevel.BOOKS.name
                     },
                 )
 
                 LibraryLevel.BOOKS -> when (val state = booksState) {
                     CatalogLoad.Idle, CatalogLoad.Loading -> CatalogLoadingScreen(
-                        label = "Opening Ṣaḥīḥ al-Bukhārī…",
+                        label = "Opening ${selectedCollection.title}…",
                         modifier = Modifier.padding(innerPadding),
                     )
                     is CatalogLoad.Failed -> CatalogErrorScreen(
@@ -310,7 +322,8 @@ fun HadithToApp() {
                         onRetry = { booksRetry++ },
                         onBack = { libraryLevelName = LibraryLevel.COLLECTIONS.name },
                     )
-                    is CatalogLoad.Ready -> BukhariBooksScreen(
+                    is CatalogLoad.Ready -> CollectionBooksScreen(
+                        collection = selectedCollection,
                         books = state.value,
                         modifier = Modifier.padding(innerPadding),
                         onBack = { libraryLevelName = LibraryLevel.COLLECTIONS.name },
@@ -334,12 +347,14 @@ fun HadithToApp() {
                         onRetry = { bookRetry++ },
                         onBack = { libraryLevelName = LibraryLevel.BOOKS.name },
                     )
-                    is CatalogLoad.Ready -> BukhariHadithsScreen(
+                    is CatalogLoad.Ready -> CollectionHadithsScreen(
+                        collection = selectedCollection,
                         bookNumber = selectedBookNumber ?: 1,
                         hadiths = state.value,
                         modifier = Modifier.padding(innerPadding),
                         onBack = { libraryLevelName = LibraryLevel.BOOKS.name },
                         onHadithSelected = { selected ->
+                            selectedRemoteCollectionSlug = selected.book.collection.slug
                             selectedRemoteId = selected.number
                             remoteDetailState = CatalogLoad.Idle
                             detailRetry++
@@ -354,11 +369,13 @@ fun HadithToApp() {
                 catalogRepository = catalogRepository,
                 modifier = Modifier.padding(innerPadding),
                 onResultSelected = { selected ->
+                    selectedRemoteCollectionSlug = null
                     selectedRemoteId = null
                     selectedHadithKey = selected.stableKey
                     destinationName = Destination.LISTEN.name
                 },
                 onCatalogResultSelected = { selected ->
+                    selectedRemoteCollectionSlug = selected.book.collection.slug
                     selectedRemoteId = selected.number
                     remoteDetailState = CatalogLoad.Idle
                     detailRetry++
@@ -441,8 +458,10 @@ private fun ListenScreen(
             }
         }
 
-        item {
-            NarrationChain(hadith)
+        if (hadith.isnad.isNotBlank()) {
+            item {
+                NarrationChain(hadith)
+            }
         }
 
         if (!quietMode) {
@@ -784,10 +803,47 @@ private fun AudioController(
 
 private fun formatTime(seconds: Int): String = "${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}"
 
+private fun formatCount(count: Int?): String = count?.let {
+    java.text.NumberFormat.getIntegerInstance().format(it)
+} ?: "Available"
+
+private fun collectionShelfLabel(collection: CatalogCollection): String = when (collection.kind) {
+    CatalogCollection.Kind.FORTY -> "complete series · read & listen"
+    CatalogCollection.Kind.MUSNAD -> "28 parts · read & listen"
+    CatalogCollection.Kind.BOOKS -> "read & listen"
+}
+
+private fun shortCollectionTitle(collection: CatalogCollection): String = when (collection.slug) {
+    "bukhari" -> "Bukhari"
+    "muslim" -> "Muslim"
+    "abudawud" -> "Abu Dawud"
+    "tirmidhi" -> "Tirmidhi"
+    "nasai" -> "Nasa'i"
+    "ibnmajah" -> "Ibn Majah"
+    "malik" -> "Muwatta"
+    "riyad" -> "Riyad"
+    "musnad-ahmad" -> "Musnad Ahmad"
+    "nawawi40" -> "Nawawi 40"
+    "qudsi40" -> "Qudsi 40"
+    "shahwaliullah40" -> "Shah Waliullah 40"
+    else -> collection.title
+}
+
+private fun catalogBookLabel(collection: CatalogCollection, book: CatalogBook): String =
+    when (collection.kind) {
+        CatalogCollection.Kind.FORTY -> "All narrations"
+        CatalogCollection.Kind.MUSNAD -> "Part ${book.number}"
+        CatalogCollection.Kind.BOOKS -> if (book.title == "Book ${book.number}") {
+            "Book ${book.number}"
+        } else {
+            "Book ${book.number} · ${book.title}"
+        }
+    }
+
 @Composable
 private fun LibraryScreen(
     modifier: Modifier,
-    onCollectionSelected: (LibraryCollection) -> Unit,
+    onCollectionSelected: (CatalogCollection) -> Unit,
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -804,27 +860,17 @@ private fun LibraryScreen(
             )
             Spacer(Modifier.height(20.dp))
         }
-        items(HadithCollections) { collection ->
-            val contentColor = if (collection.isAvailable) {
-                MaterialTheme.colorScheme.onSurface
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            }
+        items(CatalogCollections, key = { it.slug }) { collection ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(
-                        enabled = collection.isAvailable,
                         role = Role.Button,
                     ) { onCollectionSelected(collection) }
                     .padding(vertical = 16.dp)
                     .semantics {
-                        contentDescription = if (collection.isAvailable) {
-                            "Open ${collection.title}"
-                        } else {
-                            "${collection.title}, coming next"
-                        }
-                        stateDescription = if (collection.isAvailable) "Available" else "Unavailable"
+                        contentDescription = "Open ${collection.title}, ${formatCount(collection.totalCount)} hadith"
+                        stateDescription = "Available"
                     },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -832,18 +878,18 @@ private fun LibraryScreen(
                     Text(
                         collection.title,
                         style = MaterialTheme.typography.titleLarge,
-                        color = contentColor,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        collection.subtitle,
+                        "${formatCount(collection.totalCount)} hadith · ${collectionShelfLabel(collection)}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Text(
-                    collection.status,
+                    "Open",
                     style = MaterialTheme.typography.labelLarge,
-                    color = if (collection.isAvailable) MaterialTheme.colorScheme.primary else contentColor,
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -852,11 +898,12 @@ private fun LibraryScreen(
 }
 
 @Composable
-private fun BukhariBooksScreen(
-    books: List<BukhariBook>,
+private fun CollectionBooksScreen(
+    collection: CatalogCollection,
+    books: List<CatalogBook>,
     modifier: Modifier,
     onBack: () -> Unit,
-    onBookSelected: (BukhariBook) -> Unit,
+    onBookSelected: (CatalogBook) -> Unit,
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -865,12 +912,18 @@ private fun BukhariBooksScreen(
     ) {
         item {
             CatalogHeader(
-                eyebrow = "Ṣaḥīḥ al-Bukhārī",
-                title = "97 books",
+                eyebrow = collection.title,
+                title = if (collection.kind == CatalogCollection.Kind.MUSNAD) {
+                    "${books.size} parts"
+                } else if (collection.kind == CatalogCollection.Kind.FORTY) {
+                    "Complete collection"
+                } else {
+                    "${books.size} books"
+                },
                 onBack = onBack,
             )
             Text(
-                text = "7,580 narrations · Arabic opens first",
+                text = "${formatCount(collection.totalCount)} hadith · Arabic opens first",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -883,7 +936,7 @@ private fun BukhariBooksScreen(
                     .clickable(role = Role.Button) { onBookSelected(book) }
                     .padding(vertical = 15.dp)
                     .semantics {
-                        contentDescription = "Open book ${book.number}, ${book.title}"
+                        contentDescription = "Open ${catalogBookLabel(collection, book)}, ${book.count} hadith"
                     },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -895,11 +948,11 @@ private fun BukhariBooksScreen(
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = book.title,
+                        text = catalogBookLabel(collection, book),
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Text(
-                        text = "${book.count} narrations",
+                        text = "${book.count} hadith",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -911,14 +964,20 @@ private fun BukhariBooksScreen(
 }
 
 @Composable
-private fun BukhariHadithsScreen(
+private fun CollectionHadithsScreen(
+    collection: CatalogCollection,
     bookNumber: Int,
     hadiths: List<CatalogHadith>,
     modifier: Modifier,
     onBack: () -> Unit,
     onHadithSelected: (CatalogHadith) -> Unit,
 ) {
-    val title = hadiths.firstOrNull()?.book?.title ?: bukhariBookTitle(bookNumber)
+    val title = when (collection.kind) {
+        CatalogCollection.Kind.MUSNAD -> "Part $bookNumber"
+        CatalogCollection.Kind.FORTY -> collection.title
+        CatalogCollection.Kind.BOOKS -> hadiths.firstOrNull()?.book?.title
+            ?: catalogBookTitle(collection.slug, bookNumber)
+    }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(22.dp),
@@ -926,7 +985,7 @@ private fun BukhariHadithsScreen(
     ) {
         item {
             CatalogHeader(
-                eyebrow = "Book $bookNumber",
+                eyebrow = collection.title,
                 title = title,
                 onBack = onBack,
             )
@@ -943,7 +1002,7 @@ private fun BukhariHadithsScreen(
                     .fillMaxWidth()
                     .clickable(role = Role.Button) { onHadithSelected(hadith) }
                     .semantics {
-                        contentDescription = "Open Sahih al-Bukhari hadith ${hadith.number}"
+                        contentDescription = "Open ${collection.title} hadith ${hadith.number}"
                     },
                 shape = RoundedCornerShape(18.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f),
@@ -957,15 +1016,23 @@ private fun BukhariHadithsScreen(
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
                     )
-                    androidx.compose.runtime.CompositionLocalProvider(
-                        LocalLayoutDirection provides LayoutDirection.Rtl,
-                    ) {
+                    if (hadith.words.isNotEmpty()) {
+                        androidx.compose.runtime.CompositionLocalProvider(
+                            LocalLayoutDirection provides LayoutDirection.Rtl,
+                        ) {
+                            Text(
+                                text = hadith.words.take(20).joinToString(" ") { it.arabic }
+                                    .let { if (hadith.words.size > 20) "$it…" else it },
+                                modifier = Modifier.fillMaxWidth(),
+                                style = MaterialTheme.typography.titleLarge,
+                                textAlign = TextAlign.Right,
+                            )
+                        }
+                    } else {
                         Text(
-                            text = hadith.words.take(20).joinToString(" ") { it.arabic }
-                                .let { if (hadith.words.size > 20) "$it…" else it },
-                            modifier = Modifier.fillMaxWidth(),
-                            style = MaterialTheme.typography.titleLarge,
-                            textAlign = TextAlign.Right,
+                            text = "Open narration",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -1056,33 +1123,38 @@ private fun CatalogErrorScreen(
 @Composable
 private fun SearchScreen(
     repository: HadithRepository,
-    catalogRepository: BukhariCatalogRepository,
+    catalogRepository: HadithCatalogRepository,
     modifier: Modifier,
     onResultSelected: (HadithEntry) -> Unit,
     onCatalogResultSelected: (CatalogHadith) -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
+    var selectedCollectionSlug by rememberSaveable { mutableStateOf("bukhari") }
     var catalogResult by remember { mutableStateOf<CatalogLoad<CatalogHadith>>(CatalogLoad.Idle) }
     var searchJob by remember { mutableStateOf<Job?>(null) }
     val scope = rememberCoroutineScope()
     val normalizedQuery = query.trim()
-    val isBukhariNumber = BukhariCatalogParser.isValidHadithId(normalizedQuery)
-    val results = if (isBukhariNumber || normalizedQuery.isBlank()) emptyList()
+    val selectedCollection = CatalogCollections.first { it.slug == selectedCollectionSlug }
+    val isCatalogNumber = CatalogParser.isValidHadithId(normalizedQuery)
+    val results = if (isCatalogNumber || normalizedQuery.isBlank()) emptyList()
     else repository.search(normalizedQuery)
 
     fun openNumber() {
         val id = normalizedQuery
-        if (!BukhariCatalogParser.isValidHadithId(id)) return
+        if (!CatalogParser.isValidHadithId(id)) return
+        val ref = CatalogRef(selectedCollectionSlug, id)
         searchJob?.cancel()
         searchJob = scope.launch {
             catalogResult = CatalogLoad.Loading
             try {
-                val result = catalogRepository.hadith(id)
-                if (query.trim() == id) catalogResult = CatalogLoad.Ready(result)
+                val result = catalogRepository.hadith(ref)
+                if (query.trim() == id && selectedCollectionSlug == ref.collectionSlug) {
+                    catalogResult = CatalogLoad.Ready(result)
+                }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
-                if (query.trim() == id) {
+                if (query.trim() == id && selectedCollectionSlug == ref.collectionSlug) {
                     catalogResult = CatalogLoad.Failed(friendlyCatalogError(failure))
                 }
             }
@@ -1098,11 +1170,25 @@ private fun SearchScreen(
             Text(text = "Search", style = MaterialTheme.typography.headlineMedium)
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Words search the downloaded preview. Exact numbers open the full Bukhari catalog.",
+                text = "Choose a collection, then open any exact hadith number. Words search the offline opening preview.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(14.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(CatalogCollections, key = { it.slug }) { collection ->
+                    FilterChip(
+                        selected = selectedCollectionSlug == collection.slug,
+                        onClick = {
+                            searchJob?.cancel()
+                            selectedCollectionSlug = collection.slug
+                            catalogResult = CatalogLoad.Idle
+                        },
+                        label = { Text(shortCollectionTitle(collection)) },
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
             OutlinedTextField(
                 value = query,
                 onValueChange = {
@@ -1115,11 +1201,11 @@ private fun SearchScreen(
                     .height(58.dp),
                 singleLine = true,
                 placeholder = { Text("Try “intentions” or “402b”") },
-                label = { Text("Words or Bukhari number") },
+                label = { Text("Words or ${shortCollectionTitle(selectedCollection)} number") },
             )
         }
 
-        if (isBukhariNumber) {
+        if (isCatalogNumber) {
             item {
                 Button(
                     onClick = ::openNumber,
@@ -1128,7 +1214,10 @@ private fun SearchScreen(
                         .fillMaxWidth()
                         .height(52.dp),
                 ) {
-                    Text(if (catalogResult is CatalogLoad.Loading) "Opening…" else "Open Bukhari $normalizedQuery")
+                    Text(
+                        if (catalogResult is CatalogLoad.Loading) "Opening…"
+                        else "Open ${shortCollectionTitle(selectedCollection)} $normalizedQuery",
+                    )
                 }
             }
         }
@@ -1169,7 +1258,7 @@ private fun SearchScreen(
                 }
             }
         }
-        if (normalizedQuery.isNotBlank() && !isBukhariNumber && results.isEmpty()) {
+        if (normalizedQuery.isNotBlank() && !isCatalogNumber && results.isEmpty()) {
             item {
                 Text(
                     text = "No match in the downloaded preview. Full-catalog text search is not indexed offline yet.",
@@ -1190,7 +1279,9 @@ private fun CatalogHadithSearchResult(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(role = Role.Button) { onSelected(hadith) }
-            .semantics { contentDescription = "Open Sahih al-Bukhari hadith ${hadith.number}" },
+            .semantics {
+                contentDescription = "Open ${hadith.book.collection.title} hadith ${hadith.number}"
+            },
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
     ) {
@@ -1199,7 +1290,7 @@ private fun CatalogHadithSearchResult(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = "Book ${hadith.book.number} · Hadith ${hadith.number}",
+                text = "${shortCollectionTitle(hadith.book.collection)} · Hadith ${hadith.number}",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -1219,17 +1310,17 @@ private fun CatalogHadithSearchResult(
 }
 
 private fun friendlyCatalogError(failure: Exception): String = when (failure) {
-    is NoSuchElementException -> failure.message ?: "That Bukhari number was not found."
+    is NoSuchElementException -> failure.message ?: "That hadith number was not found."
     is java.io.IOException -> "Connect to the internet and try again."
     else -> "The catalog response could not be read. Please try again."
 }
 
 private suspend fun translationOrEmpty(
-    repository: BukhariCatalogRepository,
-    id: String,
+    repository: HadithCatalogRepository,
+    ref: CatalogRef,
     language: String,
 ): String = try {
-    repository.translation(id, language)?.text.orEmpty()
+    repository.translation(ref, language)?.text.orEmpty()
 } catch (cancelled: CancellationException) {
     throw cancelled
 } catch (_: Exception) {

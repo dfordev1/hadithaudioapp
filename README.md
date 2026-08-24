@@ -8,14 +8,15 @@ The app opens directly into a hadith instead of a dashboard. The reading surface
 
 The app includes:
 
-- lazy browsing of all 97 Ṣaḥīḥ al-Bukhārī books and 7,580 corpus records
-- exact-number lookup, including the corpus's alphanumeric report IDs
+- lazy browsing of all 12 live Hadith.to collections and 65,647 indexed records
+- the major books, Riyad as-Salihin, Musnad Ahmad, and three forty-hadith collections
+- collection-scoped exact-number lookup, including alphanumeric report IDs
 - real Media3 playback wherever a Hadith.to timing sidecar is published
 - synchronized highlighting from the timing sidecar's authoritative Arabic stream
 - English, Urdu, and bilingual reading
 - quiet listening and focused study modes
 - an accessible narration-chain disclosure
-- local preview text search plus full-catalog lookup by exact Bukhari number
+- local preview text search plus exact-number lookup across every collection
 - accessible, RTL-aware Jetpack Compose UI
 - a clearly labelled silent timing preview when audio is unavailable
 
@@ -30,9 +31,9 @@ The app includes:
 
 ## Status
 
-The sacred reader and the production Bukhari catalog are implemented. Book payloads load only when opened; English and Urdu translations load only for the selected narration. Sahih Muslim and Sunan Abi Dawud remain disabled “coming next” entries instead of being presented as finished.
+The sacred reader and the complete live Hadith.to shelf are implemented: Sahih al-Bukhari, Sahih Muslim, Sunan Abi Dawud, Jami at-Tirmidhi, Sunan an-Nasa'i, Sunan Ibn Majah, Muwatta Malik, Riyad as-Salihin, Musnad Ahmad, Nawawi's Forty, Forty Hadith Qudsi, and Shah Waliullah's Forty. Collection indexes and book payloads load only when opened; translations load only for the selected narration and are labelled unavailable when the upstream source does not publish them.
 
-The opening offline passage remains available immediately. Catalog records use the production Hadith.to Arabic corpus, official translation endpoints, timing manifests, and recordings. Records without a published sidecar—including current suffix-ID records—stay readable and are labelled audio-unavailable rather than borrowing another narration's recording.
+The opening offline passage remains available immediately. Catalog records use the production Hadith.to Arabic corpora, translation endpoints, timing manifests, and recordings. Records without a published sidecar stay readable and are labelled audio-unavailable rather than borrowing another narration's recording. Synthetic recitations in the forty-hadith datasets are disclosed in the player.
 
 Playback is foreground-only in this release. It handles audio focus and headphone disconnects, but a MediaSession service and notification controls are still required before background playback can be promised.
 
@@ -58,6 +59,6 @@ Release documentation includes the current [privacy policy](docs/PRIVACY.md).
 
 ## Data boundary
 
-Arabic catalog data comes from `www.hadith.to`, translations from the versioned Hadith API snapshot on jsDelivr, and timing/audio from the Hadith.to CDN. The app has no accounts, ads, or analytics. Normal CDN/server request logs may still receive network metadata such as an IP address when online content is opened.
+Arabic catalog data comes from `www.hadith.to`, translations from Hadith.to and the versioned Hadith API snapshot on jsDelivr, and timing/audio from the Hadith.to CDN. The app has no accounts, ads, or analytics. Normal CDN/server request logs may still receive network metadata such as an IP address when online content is opened.
 
 Catalog payloads are cached in memory for the current app session. Full-catalog text search and durable offline downloads are intentionally not claimed yet.
