@@ -41,16 +41,20 @@ Playback is foreground-only in this release. It handles audio focus and headphon
 Open the project in a current stable Android Studio with JDK 17 and Android SDK 36 installed. CI uses Gradle 8.13.
 
 ```bash
-gradle :app:assembleDebug
+./gradlew :app:assembleDebug
 ```
 
 Run the full local verification with:
 
 ```bash
-gradle :app:lintDebug :app:testDebugUnitTest :app:assembleDebug :app:bundleRelease
+./gradlew :app:lintDebug :app:testDebugUnitTest :app:assembleDebug :app:bundleRelease
 ```
 
 Every pull request runs the same checks on GitHub Actions and uploads an installable debug APK plus an unsigned, minified release AAB. Play Store signing and upload remain secret-backed release steps; no keystore material belongs in this repository.
+
+The manual `Android Signed Release` workflow can produce a verified signed AAB once the protected GitHub environment and four signing secrets in [docs/RELEASE.md](docs/RELEASE.md) are configured.
+
+Release documentation includes the current [privacy policy](docs/PRIVACY.md).
 
 ## Data boundary
 
