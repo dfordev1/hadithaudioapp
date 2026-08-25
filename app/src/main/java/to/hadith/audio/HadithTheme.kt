@@ -12,81 +12,138 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-private val Paper = Color(0xFFF7F4EC)
-private val Ink = Color(0xFF181A16)
-private val MutedInk = Color(0xFF686B62)
-private val Olive = Color(0xFF626B55)
-private val PaleOlive = Color(0xFFE8E9E0)
-private val WarmStone = Color(0xFFEDE8DD)
-private val Night = Color(0xFF1B1D19)
-private val NightSurface = Color(0xFF292C26)
-private val WarmWhite = Color(0xFFF4F3ED)
-private val Bronze = Color(0xFFA97942)
+internal val HadithJuniper = Color(0xFF10201C)
+internal val HadithLime = Color(0xFFD5E78C)
+internal val HadithChalk = Color(0xFFF4F6F0)
+internal val HadithCopper = Color(0xFFC28A52)
+internal val HadithSage = Color(0xFFE5EBE3)
+internal val HadithMuted = Color(0xFF52615A)
+
+private val LightLimeContainer = Color(0xFFEAF3C5)
+private val LightCopperContainer = Color(0xFFF1D9BC)
+private val DarkJuniperSurface = Color(0xFF1A3029)
+private val DarkSage = Color(0xFF29453B)
+private val DarkLime = Color(0xFFDCEB9D)
+private val DarkCopper = Color(0xFFE5B77C)
+private val DarkMuted = Color(0xFFB7C8BF)
 
 private val LightColors = lightColorScheme(
-    primary = Olive,
-    onPrimary = Color.White,
-    primaryContainer = PaleOlive,
-    onPrimaryContainer = Ink,
-    secondary = Bronze,
-    onSecondary = Ink,
-    secondaryContainer = WarmStone,
-    onSecondaryContainer = Ink,
-    background = Paper,
-    onBackground = Ink,
-    surface = Paper,
-    onSurface = Ink,
-    surfaceVariant = PaleOlive,
-    onSurfaceVariant = MutedInk,
-    outline = Color(0xFF85877D),
-    outlineVariant = Color(0xFFD4D2C8),
+    primary = HadithJuniper,
+    onPrimary = HadithChalk,
+    primaryContainer = HadithSage,
+    onPrimaryContainer = HadithJuniper,
+    secondary = HadithLime,
+    onSecondary = HadithJuniper,
+    secondaryContainer = LightLimeContainer,
+    onSecondaryContainer = HadithJuniper,
+    tertiary = HadithCopper,
+    onTertiary = HadithJuniper,
+    tertiaryContainer = LightCopperContainer,
+    onTertiaryContainer = HadithJuniper,
+    background = HadithChalk,
+    onBackground = Color(0xFF0B110F),
+    surface = HadithChalk,
+    onSurface = Color(0xFF0B110F),
+    surfaceVariant = HadithSage,
+    onSurfaceVariant = HadithMuted,
+    outline = Color(0xFF6E7C74),
+    outlineVariant = Color(0xFFC8D2CB),
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFFBBC5A9),
-    onPrimary = Night,
-    primaryContainer = Color(0xFF424A39),
-    onPrimaryContainer = WarmWhite,
-    secondary = Color(0xFFE0B16A),
-    onSecondary = Night,
-    secondaryContainer = Color(0xFF4B3A25),
-    onSecondaryContainer = WarmWhite,
-    background = Night,
-    onBackground = WarmWhite,
-    surface = NightSurface,
-    onSurface = WarmWhite,
-    surfaceVariant = Color(0xFF3D4438),
-    onSurfaceVariant = Color(0xFFCBD0C4),
+    primary = DarkLime,
+    onPrimary = HadithJuniper,
+    primaryContainer = DarkSage,
+    onPrimaryContainer = HadithChalk,
+    secondary = HadithLime,
+    onSecondary = HadithJuniper,
+    secondaryContainer = DarkSage,
+    onSecondaryContainer = HadithChalk,
+    tertiary = DarkCopper,
+    onTertiary = HadithJuniper,
+    tertiaryContainer = Color(0xFF5B432B),
+    onTertiaryContainer = HadithChalk,
+    background = HadithJuniper,
+    onBackground = HadithChalk,
+    surface = DarkJuniperSurface,
+    onSurface = HadithChalk,
+    surfaceVariant = DarkSage,
+    onSurfaceVariant = DarkMuted,
+    outline = Color(0xFF8FA79A),
+    outlineVariant = Color(0xFF49675A),
 )
 
 private val HadithTypography = Typography(
     headlineLarge = TextStyle(
-        fontFamily = FontFamily.Serif,
-        fontWeight = FontWeight.Normal,
-        fontSize = 34.sp,
-        lineHeight = 48.sp,
-        letterSpacing = (-0.5).sp,
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Bold,
+        fontSize = 32.sp,
+        lineHeight = 40.sp,
+        letterSpacing = (-0.25).sp,
     ),
     headlineMedium = TextStyle(
-        fontFamily = FontFamily.Serif,
-        fontWeight = FontWeight.Normal,
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Bold,
         fontSize = 28.sp,
-        lineHeight = 38.sp,
+        lineHeight = 36.sp,
     ),
     headlineSmall = TextStyle(
-        fontFamily = FontFamily.Serif,
-        fontWeight = FontWeight.Normal,
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.SemiBold,
         fontSize = 24.sp,
-        lineHeight = 34.sp,
+        lineHeight = 32.sp,
     ),
     titleLarge = TextStyle(
-        fontWeight = FontWeight.Medium,
-        fontSize = 21.sp,
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Bold,
+        fontSize = 22.sp,
         lineHeight = 28.sp,
     ),
-    bodyLarge = TextStyle(fontSize = 17.sp, lineHeight = 27.sp),
-    bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 21.sp),
-    labelLarge = TextStyle(fontWeight = FontWeight.Medium, fontSize = 14.sp),
+    titleMedium = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Medium,
+        fontSize = 18.sp,
+        lineHeight = 24.sp,
+    ),
+    titleSmall = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 16.sp,
+        lineHeight = 22.sp,
+    ),
+    bodyLarge = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontSize = 18.sp,
+        lineHeight = 28.sp,
+    ),
+    bodyMedium = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontSize = 16.sp,
+        lineHeight = 24.sp,
+    ),
+    bodySmall = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+    ),
+    labelLarge = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+    ),
+    labelMedium = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Medium,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+    ),
+    labelSmall = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Medium,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+    ),
 )
 
 @Composable
