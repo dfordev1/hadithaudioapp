@@ -3,6 +3,7 @@ package to.hadith.audio
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -19,27 +20,30 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -65,7 +69,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
@@ -81,6 +84,7 @@ private enum class Destination { LISTEN, LIBRARY, SEARCH }
 private enum class ReadingMode { RECEIVE, STUDY }
 private enum class Language { ENGLISH, URDU, BOTH }
 private enum class LibraryLevel { COLLECTIONS, BOOKS, HADITHS }
+private enum class LibraryFilter { ALL, SIX_BOOKS, FORTY }
 
 private sealed interface CatalogLoad<out T> {
     data object Idle : CatalogLoad<Nothing>
@@ -242,7 +246,7 @@ fun HadithToApp() {
         bottomBar = {
             if (!quietMode) {
                 Column {
-                    if (destination != Destination.LISTEN && hadith != null) {
+                    if (hadith != null) {
                         MiniPlayer(
                             hadith = hadith,
                             state = audioState,
@@ -463,13 +467,13 @@ private fun ListenScreen(
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            start = 22.dp,
-            end = 22.dp,
-            top = 12.dp,
-            bottom = 28.dp,
+        contentPadding = PaddingValues(
+            start = 20.dp,
+            end = 20.dp,
+            top = 10.dp,
+            bottom = 30.dp,
         ),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         item {
             Row(
@@ -477,22 +481,7 @@ private fun ListenScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Column {
-                    Text(
-                        text = "Hadith Audio",
-                        modifier = Modifier.semantics { heading() },
-                        style = MaterialTheme.typography.headlineSmall,
-                    )
-                    Text(
-                        text = when {
-                            quietMode -> "Focused listening"
-                            audioState.positionSeconds > 0f -> "Continue listening"
-                            else -> "A moment to listen"
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                SukunWordmark()
                 IconButton(
                     onClick = { onQuietModeChange(!quietMode) },
                     modifier = Modifier.size(48.dp),
@@ -500,53 +489,79 @@ private fun ListenScreen(
                     Icon(
                         imageVector = if (quietMode) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
                         contentDescription = if (quietMode) {
-                            "Exit focused listening mode"
+                            "Exit focused reading"
                         } else {
-                            "Enter focused listening mode"
+                            "Enter focused reading"
                         },
+                        tint = MaterialTheme.colorScheme.onBackground,
                     )
                 }
             }
         }
 
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(role = Role.Button) { showSourceInfo = true }
+                    .semantics {
+                        contentDescription = "Source details for ${hadith.collection}, ${hadith.number}"
+                    },
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "${hadith.collection}  ·  ${hadith.number}",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        text = hadith.book,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                IconButton(
-                    onClick = { showSourceInfo = true },
-                    modifier = Modifier.size(48.dp),
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        SukunSectionLabel("SOURCE")
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "${hadith.collection}  ·  ${hadith.number}",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = hadith.book,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                     Icon(
                         imageVector = Icons.Filled.Info,
-                        contentDescription = "Show source details",
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
                     )
                 }
             }
         }
 
         item {
-            ArabicHero(
-                words = displayWords,
-                selectedWord = selectedWord,
-                onWordSelected = onWordSelected,
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                SukunSectionLabel(
+                    text = if (selectedWord in displayWords.indices) {
+                        "FOLLOWING THE RECITATION"
+                    } else {
+                        "ARABIC MATN"
+                    },
+                )
+                ArabicHero(
+                    words = displayWords,
+                    selectedWord = selectedWord,
+                    onWordSelected = onWordSelected,
+                )
+                Text(
+                    text = "Tap any Arabic word to seek its audio position.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
 
         item {
@@ -565,57 +580,55 @@ private fun ListenScreen(
 
         if (!quietMode && (language == Language.ENGLISH || language == Language.BOTH)) {
             item {
-                Text(
-                    text = hadith.english.ifBlank { "Official English translation unavailable." },
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (hadith.english.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant
-                    else MaterialTheme.colorScheme.onSurface,
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SukunSectionLabel("ENGLISH TRANSLATION")
+                    Text(
+                        text = hadith.english.ifBlank { "Official English translation unavailable." },
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (hadith.english.isBlank()) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        },
+                    )
+                }
             }
         }
         if (!quietMode && (language == Language.URDU || language == Language.BOTH)) {
             item {
-                androidx.compose.runtime.CompositionLocalProvider(
-                    LocalLayoutDirection provides LayoutDirection.Rtl,
-                ) {
-                    Text(
-                        text = hadith.urdu.ifBlank { "سرکاری اردو ترجمہ دستیاب نہیں ہے۔" },
-                        modifier = Modifier.fillMaxWidth(),
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Right,
-                        color = if (hadith.urdu.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant
-                        else MaterialTheme.colorScheme.onSurface,
-                    )
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SukunSectionLabel("URDU TRANSLATION")
+                    androidx.compose.runtime.CompositionLocalProvider(
+                        LocalLayoutDirection provides LayoutDirection.Rtl,
+                    ) {
+                        Text(
+                            text = hadith.urdu.ifBlank { "سرکاری اردو ترجمہ دستیاب نہیں ہے۔" },
+                            modifier = Modifier.fillMaxWidth(),
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Right,
+                            color = if (hadith.urdu.isBlank()) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                        )
+                    }
                 }
             }
         }
 
         if (!quietMode) {
-            item {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            }
+            item { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "Reading",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    SukunSectionLabel("READING TOOLS")
                     ModeChooser(mode = mode, onModeChange = onModeChange)
                 }
             }
         }
 
         if (!quietMode && mode == ReadingMode.STUDY && selectedWord in displayWords.indices) {
-            item {
-                WordInsight(displayWords[selectedWord])
-            }
-        }
-
-        if (!quietMode && hadith.isnad.isNotBlank()) {
-            item {
-                NarrationChain(hadith)
-            }
+            item { WordInsight(displayWords[selectedWord]) }
         }
     }
 }
@@ -649,30 +662,29 @@ private fun ArabicHero(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         androidx.compose.runtime.CompositionLocalProvider(
             LocalLayoutDirection provides LayoutDirection.Rtl,
         ) {
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 words.forEachIndexed { index, word ->
                     val active = index == selectedWord
                     Text(
                         text = word.arabic,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(7.dp))
                             .background(
-                                if (active) MaterialTheme.colorScheme.secondary.copy(alpha = 0.28f)
+                                if (active) HadithLime.copy(alpha = 0.42f)
                                 else androidx.compose.ui.graphics.Color.Transparent,
                             )
                             .clickable(role = Role.Button) { onWordSelected(index) }
-                            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                            .padding(horizontal = 5.dp, vertical = 4.dp)
+                            .padding(horizontal = 4.dp, vertical = 2.dp)
                             .semantics {
                                 contentDescription = if (word.gloss.isBlank()) {
                                     word.arabic
@@ -682,58 +694,7 @@ private fun ArabicHero(
                                 selected = active
                             },
                         style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun NarrationChain(hadith: HadithEntry) {
-    var expanded by rememberSaveable(hadith.stableKey) { mutableStateOf(false) }
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Narration chain", style = MaterialTheme.typography.labelLarge)
-                    Text(
-                        if (hadith.narrator.isBlank()) "Full transmitted chain preserved"
-                        else "Narrated by ${hadith.narrator}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                TextButton(
-                    onClick = { expanded = !expanded },
-                    modifier = Modifier.semantics {
-                        contentDescription = if (expanded) "Hide narration chain" else "Show narration chain"
-                        stateDescription = if (expanded) "Expanded" else "Collapsed"
-                    },
-                ) {
-                    Text(if (expanded) "Hide" else "View")
-                }
-            }
-            if (expanded) {
-                androidx.compose.runtime.CompositionLocalProvider(
-                    LocalLayoutDirection provides LayoutDirection.Rtl,
-                ) {
-                    Text(
-                        text = hadith.isnad,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Right,
+                        color = if (active) HadithJuniper else MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
@@ -818,74 +779,116 @@ private fun AudioController(
     onPlayPause: () -> Unit,
     onProgressChange: (Float) -> Unit,
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(
-            text = state.statusText,
-            modifier = Modifier.semantics {
-                contentDescription = "Audio status: ${state.statusText}"
-            },
-            style = MaterialTheme.typography.labelLarge,
-            color = if (state.usingTimingPreview) MaterialTheme.colorScheme.error
-            else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Slider(
-            value = state.positionSeconds,
-            onValueChange = onProgressChange,
-            enabled = !state.isLoading && state.durationSeconds > 0f,
-            valueRange = 0f..state.durationSeconds.coerceAtLeast(0.1f),
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { contentDescription = "Hadith audio progress" },
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+    val duration = state.durationSeconds.coerceAtLeast(0.1f)
+    val position = state.positionSeconds.coerceIn(0f, duration)
+    val enabled = !state.isLoading && state.durationSeconds > 0f
+    val playing = state.isPlaying || state.previewPlaying
+
+    SukunPlayerSurface(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                text = formatTime(state.positionSeconds.toInt()),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Button(
-                onClick = onPlayPause,
-                enabled = !state.isLoading && state.durationSeconds > 0f,
-                modifier = Modifier
-                    .heightIn(min = 52.dp)
-                    .semantics {
-                        contentDescription = when {
-                            state.usingTimingPreview && state.previewPlaying -> "Pause timing preview"
-                            state.usingTimingPreview -> "Preview timing without audio"
-                            state.isPlaying -> "Pause hadith"
-                            else -> "Play hadith"
-                        }
-                    },
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Icon(
-                    imageVector = if (state.isPlaying || state.previewPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    contentDescription = null,
-                )
-                Spacer(Modifier.size(8.dp))
                 Text(
-                    when {
-                        state.usingTimingPreview && state.previewPlaying -> "Pause preview"
-                        state.usingTimingPreview -> "Preview timing"
-                        state.isPlaying -> "Pause"
-                        else -> "Listen"
+                    text = if (selectedAudioFollowsText(state)) {
+                        "FOLLOWING THE TEXT"
+                    } else {
+                        "RECITATION"
                     },
+                    style = MaterialTheme.typography.labelLarge,
+                    color = HadithLime,
+                )
+                Text(
+                    text = "${formatTime(position.toInt())}  /  ${formatTime(state.durationSeconds.toInt())}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = HadithSage,
                 )
             }
+            Slider(
+                value = position,
+                onValueChange = onProgressChange,
+                enabled = enabled,
+                valueRange = 0f..duration,
+                colors = SliderDefaults.colors(
+                    thumbColor = HadithLime,
+                    activeTrackColor = HadithLime,
+                    inactiveTrackColor = HadithSage.copy(alpha = 0.26f),
+                    disabledThumbColor = HadithSage,
+                    disabledActiveTrackColor = HadithSage.copy(alpha = 0.45f),
+                    disabledInactiveTrackColor = HadithSage.copy(alpha = 0.18f),
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "Hadith audio progress" },
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                TextButton(
+                    onClick = { onProgressChange((position - 10f).coerceAtLeast(0f)) },
+                    enabled = enabled,
+                    modifier = Modifier.sizeIn(minWidth = 56.dp, minHeight = 48.dp),
+                    colors = ButtonDefaults.textButtonColors(contentColor = HadithChalk),
+                ) {
+                    Text("−10", style = MaterialTheme.typography.labelLarge)
+                }
+                Button(
+                    onClick = onPlayPause,
+                    enabled = enabled,
+                    modifier = Modifier
+                        .size(64.dp)
+                        .semantics {
+                            contentDescription = when {
+                                state.usingTimingPreview && state.previewPlaying -> "Pause timing preview"
+                                state.usingTimingPreview -> "Preview timing without audio"
+                                state.isPlaying -> "Pause hadith"
+                                else -> "Play hadith"
+                            }
+                        },
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = HadithLime,
+                        contentColor = HadithJuniper,
+                    ),
+                    contentPadding = PaddingValues(0.dp),
+                ) {
+                    Icon(
+                        imageVector = if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(30.dp),
+                    )
+                }
+                TextButton(
+                    onClick = { onProgressChange((position + 10f).coerceAtMost(duration)) },
+                    enabled = enabled,
+                    modifier = Modifier.sizeIn(minWidth = 56.dp, minHeight = 48.dp),
+                    colors = ButtonDefaults.textButtonColors(contentColor = HadithChalk),
+                ) {
+                    Text("+10", style = MaterialTheme.typography.labelLarge)
+                }
+            }
             Text(
-                text = formatTime(state.durationSeconds.toInt()),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = state.statusText,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "Audio status: ${state.statusText}" },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (state.usingTimingPreview) HadithCopper else HadithSage,
+                textAlign = TextAlign.Center,
             )
         }
     }
 }
+
+private fun selectedAudioFollowsText(state: AudioUiState): Boolean =
+    state.wordTimings.isNotEmpty() || state.usingTimingPreview
 
 @Composable
 private fun MiniPlayer(
@@ -895,75 +898,80 @@ private fun MiniPlayer(
     onOpen: () -> Unit,
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.background,
         tonalElevation = 0.dp,
     ) {
-        Column {
-            LinearProgressIndicator(
-                progress = {
-                    if (state.durationSeconds > 0f) {
-                        (state.positionSeconds / state.durationSeconds).coerceIn(0f, 1f)
+        SukunPlayerSurface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+        ) {
+            Column {
+                SukunAudioProgress(
+                    progress = if (state.durationSeconds > 0f) {
+                        state.positionSeconds / state.durationSeconds
                     } else {
                         0f
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(2.dp),
-                color = MaterialTheme.colorScheme.secondary,
-                trackColor = MaterialTheme.colorScheme.outlineVariant,
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 18.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Column(
+                    },
                     modifier = Modifier
-                        .weight(1f)
-                        .clickable(role = Role.Button, onClick = onOpen)
-                        .padding(vertical = 4.dp)
-                        .semantics {
-                            contentDescription = "Open player for ${hadith.collection}, ${hadith.number}"
-                        },
+                        .fillMaxWidth()
+                        .height(3.dp),
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text(
-                        text = "${hadith.collection}  ·  ${hadith.number}",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = hadith.book,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                IconButton(
-                    onClick = onPlayPause,
-                    enabled = !state.isLoading && state.durationSeconds > 0f,
-                    modifier = Modifier.size(48.dp),
-                ) {
-                    Icon(
-                        imageVector = if (state.isPlaying || state.previewPlaying) {
-                            Icons.Filled.Pause
-                        } else {
-                            Icons.Filled.PlayArrow
-                        },
-                        contentDescription = if (state.isPlaying || state.previewPlaying) {
-                            "Pause hadith"
-                        } else {
-                            "Play hadith"
-                        },
-                    )
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable(role = Role.Button, onClick = onOpen)
+                            .padding(vertical = 4.dp)
+                            .semantics {
+                                contentDescription = "Open player for ${hadith.collection}, ${hadith.number}"
+                            },
+                    ) {
+                        Text(
+                            text = "${hadith.collection}  ·  ${hadith.number}",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = HadithChalk,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = "${formatTime(state.positionSeconds.toInt())} of ${formatTime(state.durationSeconds.toInt())}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = HadithSage,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    IconButton(
+                        onClick = onPlayPause,
+                        enabled = !state.isLoading && state.durationSeconds > 0f,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(HadithLime),
+                    ) {
+                        Icon(
+                            imageVector = if (state.isPlaying || state.previewPlaying) {
+                                Icons.Filled.Pause
+                            } else {
+                                Icons.Filled.PlayArrow
+                            },
+                            contentDescription = if (state.isPlaying || state.previewPlaying) {
+                                "Pause hadith"
+                            } else {
+                                "Play hadith"
+                            },
+                            tint = HadithJuniper,
+                        )
+                    }
                 }
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
     }
 }
@@ -973,12 +981,6 @@ private fun formatTime(seconds: Int): String = "${seconds / 60}:${(seconds % 60)
 private fun formatCount(count: Int?): String = count?.let {
     java.text.NumberFormat.getIntegerInstance().format(it)
 } ?: "Available"
-
-private fun collectionShelfLabel(collection: CatalogCollection): String = when (collection.kind) {
-    CatalogCollection.Kind.FORTY -> "complete series · read & listen"
-    CatalogCollection.Kind.MUSNAD -> "28 parts · read & listen"
-    CatalogCollection.Kind.BOOKS -> "read & listen"
-}
 
 private fun shortCollectionTitle(collection: CatalogCollection): String = when (collection.slug) {
     "bukhari" -> "Bukhari"
@@ -1012,16 +1014,27 @@ private fun LibraryScreen(
     modifier: Modifier,
     onCollectionSelected: (CatalogCollection) -> Unit,
 ) {
+    var filterName by rememberSaveable { mutableStateOf(LibraryFilter.ALL.name) }
+    val filter = LibraryFilter.valueOf(filterName)
+    val sixBookSlugs = setOf("bukhari", "muslim", "abudawud", "tirmidhi", "nasai", "ibnmajah")
+    val visibleCollections = when (filter) {
+        LibraryFilter.ALL -> CatalogCollections
+        LibraryFilter.SIX_BOOKS -> CatalogCollections.filter { it.slug in sixBookSlugs }
+        LibraryFilter.FORTY -> CatalogCollections.filter { it.kind == CatalogCollection.Kind.FORTY }
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(22.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
+            SukunWordmark()
+            Spacer(Modifier.height(24.dp))
             Text(
-                text = "The Hadith Library",
+                text = "Library",
                 modifier = Modifier.semantics { heading() },
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.headlineLarge,
             )
             Spacer(Modifier.height(6.dp))
             Text(
@@ -1029,41 +1042,55 @@ private fun LibraryScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(20.dp))
-        }
-        items(CatalogCollections, key = { it.slug }) { collection ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(
-                        role = Role.Button,
-                    ) { onCollectionSelected(collection) }
-                    .padding(vertical = 16.dp)
-                    .semantics {
-                        contentDescription = "Open ${collection.title}, ${formatCount(collection.totalCount)} hadith"
-                        stateDescription = "Available"
-                    },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        collection.title,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        "${formatCount(collection.totalCount)} hadith · ${collectionShelfLabel(collection)}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Spacer(Modifier.height(18.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(LibraryFilter.entries) { option ->
+                    FilterChip(
+                        selected = filter == option,
+                        onClick = { filterName = option.name },
+                        label = {
+                            Text(
+                                when (option) {
+                                    LibraryFilter.ALL -> "All"
+                                    LibraryFilter.SIX_BOOKS -> "Six books"
+                                    LibraryFilter.FORTY -> "Forty"
+                                },
+                            )
+                        },
                     )
                 }
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                SukunSectionLabel("COLLECTIONS")
                 Text(
-                    "Open",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
+                    text = "Canonical order",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        }
+
+        items(visibleCollections.chunked(2), key = { row -> row.joinToString("|") { it.slug } }) { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                row.forEach { collection ->
+                    SukunCollectionTile(
+                        index = CatalogCollections.indexOf(collection) + 1,
+                        title = collection.title,
+                        subtitle = "${formatCount(collection.totalCount)} narrations",
+                        onClick = { onCollectionSelected(collection) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
+            }
         }
     }
 }
@@ -1531,10 +1558,11 @@ private fun HadithBottomBar(
     onDestinationSelected: (Destination) -> Unit,
 ) {
     NavigationBar(
+        containerColor = MaterialTheme.colorScheme.background,
         tonalElevation = 0.dp,
     ) {
         listOf(
-            Destination.LISTEN to "Home",
+            Destination.LISTEN to "Listen",
             Destination.LIBRARY to "Library",
             Destination.SEARCH to "Search",
         ).forEach { (item, label) ->
@@ -1544,7 +1572,7 @@ private fun HadithBottomBar(
                 icon = {
                     Icon(
                         imageVector = when (item) {
-                            Destination.LISTEN -> Icons.Filled.Home
+                            Destination.LISTEN -> Icons.Filled.Headphones
                             Destination.LIBRARY -> Icons.AutoMirrored.Filled.MenuBook
                             Destination.SEARCH -> Icons.Filled.Search
                         },
@@ -1552,6 +1580,13 @@ private fun HadithBottomBar(
                     )
                 },
                 label = { Text(label) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = HadithJuniper,
+                    selectedTextColor = MaterialTheme.colorScheme.onBackground,
+                    indicatorColor = HadithLime,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
             )
         }
     }
