@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
@@ -24,7 +25,9 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
@@ -36,7 +39,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
@@ -58,11 +62,12 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -236,10 +241,20 @@ fun HadithToApp() {
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (!quietMode) {
-                HadithBottomBar(
-                    destination = destination,
-                    onDestinationSelected = { destinationName = it.name },
-                )
+                Column {
+                    if (destination != Destination.LISTEN && hadith != null) {
+                        MiniPlayer(
+                            hadith = hadith,
+                            state = audioState,
+                            onPlayPause = audioController::togglePlayPause,
+                            onOpen = { destinationName = Destination.LISTEN.name },
+                        )
+                    }
+                    HadithBottomBar(
+                        destination = destination,
+                        onDestinationSelected = { destinationName = it.name },
+                    )
+                }
             }
         },
     ) { innerPadding ->
@@ -386,6 +401,7 @@ fun HadithToApp() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ListenScreen(
     hadith: HadithEntry,
@@ -403,6 +419,48 @@ private fun ListenScreen(
     onProgressChange: (Float) -> Unit,
     onWordSelected: (Int) -> Unit,
 ) {
+    var showSourceInfo by rememberSaveable(hadith.stableKey) { mutableStateOf(false) }
+
+    if (showSourceInfo) {
+        ModalBottomSheet(onDismissRequest = { showSourceInfo = false }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, end = 24.dp, bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = "Source details",
+                    modifier = Modifier.semantics { heading() },
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                Text(
+                    text = hadith.collection,
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = "${hadith.book}  ·  ${hadith.number}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = hadith.passageLabel,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 6.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                )
+                Text(
+                    text = "Arabic text, timing and audio are loaded from Hadith.to. English and Urdu are shown only when a source translation is available.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(
@@ -411,7 +469,7 @@ private fun ListenScreen(
             top = 12.dp,
             bottom = 28.dp,
         ),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         item {
             Row(
@@ -421,12 +479,16 @@ private fun ListenScreen(
             ) {
                 Column {
                     Text(
-                        text = "hadith.to",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
+                        text = "Hadith Audio",
+                        modifier = Modifier.semantics { heading() },
+                        style = MaterialTheme.typography.headlineSmall,
                     )
                     Text(
-                        text = if (quietMode) "Quiet mode" else "A moment to listen",
+                        text = when {
+                            quietMode -> "Focused listening"
+                            audioState.positionSeconds > 0f -> "Continue listening"
+                            else -> "A moment to listen"
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -437,52 +499,62 @@ private fun ListenScreen(
                 ) {
                     Icon(
                         imageVector = if (quietMode) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                        contentDescription = if (quietMode) "Exit quiet mode" else "Enter quiet mode",
+                        contentDescription = if (quietMode) {
+                            "Exit focused listening mode"
+                        } else {
+                            "Enter focused listening mode"
+                        },
                     )
                 }
             }
         }
 
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = "${hadith.collection}  ·  ${hadith.number}",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = "${hadith.book}  ·  ${hadith.passageLabel}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-
-        if (hadith.isnad.isNotBlank()) {
-            item {
-                NarrationChain(hadith)
-            }
-        }
-
-        if (!quietMode) {
-            item {
-                ModeChooser(mode = mode, onModeChange = onModeChange)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "${hadith.collection}  ·  ${hadith.number}",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = hadith.book,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                IconButton(
+                    onClick = { showSourceInfo = true },
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Info,
+                        contentDescription = "Show source details",
+                    )
+                }
             }
         }
 
         item {
             ArabicHero(
-                hadith = hadith,
                 words = displayWords,
                 selectedWord = selectedWord,
                 onWordSelected = onWordSelected,
             )
         }
 
-        if (!quietMode && mode == ReadingMode.STUDY && selectedWord in displayWords.indices) {
-            item {
-                WordInsight(displayWords[selectedWord])
-            }
+        item {
+            AudioController(
+                state = audioState,
+                onPlayPause = onPlayPause,
+                onProgressChange = onProgressChange,
+            )
         }
 
         if (!quietMode) {
@@ -518,12 +590,32 @@ private fun ListenScreen(
             }
         }
 
-        item {
-            AudioController(
-                state = audioState,
-                onPlayPause = onPlayPause,
-                onProgressChange = onProgressChange,
-            )
+        if (!quietMode) {
+            item {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Reading",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    ModeChooser(mode = mode, onModeChange = onModeChange)
+                }
+            }
+        }
+
+        if (!quietMode && mode == ReadingMode.STUDY && selectedWord in displayWords.indices) {
+            item {
+                WordInsight(displayWords[selectedWord])
+            }
+        }
+
+        if (!quietMode && hadith.isnad.isNotBlank()) {
+            item {
+                NarrationChain(hadith)
+            }
         }
     }
 }
@@ -550,7 +642,6 @@ private fun ModeChooser(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ArabicHero(
-    hadith: HadithEntry,
     words: List<HadithWord>,
     selectedWord: Int,
     onWordSelected: (Int) -> Unit,
@@ -590,17 +681,12 @@ private fun ArabicHero(
                                 }
                                 selected = active
                             },
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = MaterialTheme.typography.headlineLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
         }
-        Text(
-            text = "${hadith.collection} ${hadith.number.removePrefix("Hadith ")}  ·  ${hadith.passageLabel}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
@@ -609,8 +695,8 @@ private fun NarrationChain(hadith: HadithEntry) {
     var expanded by rememberSaveable(hadith.stableKey) { mutableStateOf(false) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
             Row(
@@ -659,7 +745,7 @@ private fun NarrationChain(hadith: HadithEntry) {
 private fun WordInsight(word: HadithWord) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 1.dp,
     ) {
@@ -711,7 +797,7 @@ private fun LanguageChooser(
                 onClick = { onLanguageChange(option) },
                 modifier = Modifier
                     .weight(1f)
-                    .height(48.dp),
+                    .heightIn(min = 48.dp),
                 label = {
                     Text(
                         text = when (option) {
@@ -768,7 +854,7 @@ private fun AudioController(
                 onClick = onPlayPause,
                 enabled = !state.isLoading && state.durationSeconds > 0f,
                 modifier = Modifier
-                    .height(52.dp)
+                    .heightIn(min = 52.dp)
                     .semantics {
                         contentDescription = when {
                             state.usingTimingPreview && state.previewPlaying -> "Pause timing preview"
@@ -797,6 +883,87 @@ private fun AudioController(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+@Composable
+private fun MiniPlayer(
+    hadith: HadithEntry,
+    state: AudioUiState,
+    onPlayPause: () -> Unit,
+    onOpen: () -> Unit,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+    ) {
+        Column {
+            LinearProgressIndicator(
+                progress = {
+                    if (state.durationSeconds > 0f) {
+                        (state.positionSeconds / state.durationSeconds).coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(2.dp),
+                color = MaterialTheme.colorScheme.secondary,
+                trackColor = MaterialTheme.colorScheme.outlineVariant,
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 18.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(role = Role.Button, onClick = onOpen)
+                        .padding(vertical = 4.dp)
+                        .semantics {
+                            contentDescription = "Open player for ${hadith.collection}, ${hadith.number}"
+                        },
+                ) {
+                    Text(
+                        text = "${hadith.collection}  ·  ${hadith.number}",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = hadith.book,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                IconButton(
+                    onClick = onPlayPause,
+                    enabled = !state.isLoading && state.durationSeconds > 0f,
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Icon(
+                        imageVector = if (state.isPlaying || state.previewPlaying) {
+                            Icons.Filled.Pause
+                        } else {
+                            Icons.Filled.PlayArrow
+                        },
+                        contentDescription = if (state.isPlaying || state.previewPlaying) {
+                            "Pause hadith"
+                        } else {
+                            "Play hadith"
+                        },
+                    )
+                }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
     }
 }
@@ -851,10 +1018,14 @@ private fun LibraryScreen(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         item {
-            Text(text = "Library", style = MaterialTheme.typography.headlineMedium)
+            Text(
+                text = "The Hadith Library",
+                modifier = Modifier.semantics { heading() },
+                style = MaterialTheme.typography.headlineMedium,
+            )
             Spacer(Modifier.height(6.dp))
             Text(
-                text = "Collections, quietly arranged.",
+                text = "12 collections  ·  ${formatCount(CatalogCollections.sumOf { it.totalCount ?: 0 })} narrations",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1004,8 +1175,8 @@ private fun CollectionHadithsScreen(
                     .semantics {
                         contentDescription = "Open ${collection.title} hadith ${hadith.number}"
                     },
-                shape = RoundedCornerShape(18.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f),
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -1059,7 +1230,11 @@ private fun CatalogHeader(
                 color = MaterialTheme.colorScheme.primary,
             )
             Spacer(Modifier.height(4.dp))
-            Text(text = title, style = MaterialTheme.typography.headlineMedium)
+            Text(
+                text = title,
+                modifier = Modifier.semantics { heading() },
+                style = MaterialTheme.typography.headlineMedium,
+            )
         }
         TextButton(onClick = onBack, modifier = Modifier.sizeIn(minHeight = 48.dp)) {
             Text("Back")
@@ -1167,7 +1342,11 @@ private fun SearchScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
-            Text(text = "Search", style = MaterialTheme.typography.headlineMedium)
+            Text(
+                text = "Find a Hadith",
+                modifier = Modifier.semantics { heading() },
+                style = MaterialTheme.typography.headlineMedium,
+            )
             Spacer(Modifier.height(8.dp))
             Text(
                 text = "Choose a collection, then open any exact hadith number. Words search the offline opening preview.",
@@ -1198,7 +1377,7 @@ private fun SearchScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(58.dp),
+                    .heightIn(min = 58.dp),
                 singleLine = true,
                 placeholder = { Text("Try “intentions” or “402b”") },
                 label = { Text("Words or ${shortCollectionTitle(selectedCollection)} number") },
@@ -1212,7 +1391,7 @@ private fun SearchScreen(
                     enabled = catalogResult !is CatalogLoad.Loading,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp),
+                        .heightIn(min = 52.dp),
                 ) {
                     Text(
                         if (catalogResult is CatalogLoad.Loading) "Opening…"
@@ -1242,8 +1421,8 @@ private fun SearchScreen(
                     .fillMaxWidth()
                     .clickable(role = Role.Button) { onResultSelected(result) }
                     .semantics { contentDescription = "Open ${result.collection} ${result.number}" },
-                shape = RoundedCornerShape(18.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f),
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -1282,8 +1461,8 @@ private fun CatalogHadithSearchResult(
             .semantics {
                 contentDescription = "Open ${hadith.book.collection.title} hadith ${hadith.number}"
             },
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -1355,7 +1534,7 @@ private fun HadithBottomBar(
         tonalElevation = 0.dp,
     ) {
         listOf(
-            Destination.LISTEN to "Listen",
+            Destination.LISTEN to "Home",
             Destination.LIBRARY to "Library",
             Destination.SEARCH to "Search",
         ).forEach { (item, label) ->
@@ -1365,7 +1544,7 @@ private fun HadithBottomBar(
                 icon = {
                     Icon(
                         imageVector = when (item) {
-                            Destination.LISTEN -> Icons.Filled.Headphones
+                            Destination.LISTEN -> Icons.Filled.Home
                             Destination.LIBRARY -> Icons.AutoMirrored.Filled.MenuBook
                             Destination.SEARCH -> Icons.Filled.Search
                         },
