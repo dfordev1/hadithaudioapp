@@ -15,6 +15,8 @@ The app includes:
 - synchronized highlighting from the timing sidecar's authoritative Arabic stream
 - English, Urdu, and bilingual reading
 - quiet listening and focused study modes
+- a Home-first, Arabic-led reading surface with restrained sacred styling
+- a persistent mini-player while browsing the library or search
 - an accessible narration-chain disclosure
 - local preview text search plus exact-number lookup across every collection
 - accessible, RTL-aware Jetpack Compose UI

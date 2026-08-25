@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="sacred_ink">#1D211D</color>
-    <color name="sacred_paper">#F8F7F2</color>
-    <color name="sacred_olive">#68705B</color>
-    <color name="sacred_amber">#B47A3C</color>
-    <color name="launcher_background">#F8F7F2</color>
+    <color name="sacred_ink">#181A16</color>
+    <color name="sacred_paper">#F7F4EC</color>
+    <color name="sacred_olive">#626B55</color>
+    <color name="sacred_amber">#A97942</color>
+    <color name="launcher_background">#F7F4EC</color>
 </resources>

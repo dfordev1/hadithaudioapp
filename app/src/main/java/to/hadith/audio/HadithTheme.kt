@@ -12,34 +12,45 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-private val Paper = Color(0xFFF8F7F3)
-private val Ink = Color(0xFF24251F)
-private val MutedInk = Color(0xFF686960)
-private val Olive = Color(0xFF59624B)
-private val PaleOlive = Color(0xFFE4E8DD)
+private val Paper = Color(0xFFF7F4EC)
+private val Ink = Color(0xFF181A16)
+private val MutedInk = Color(0xFF686B62)
+private val Olive = Color(0xFF626B55)
+private val PaleOlive = Color(0xFFE8E9E0)
+private val WarmStone = Color(0xFFEDE8DD)
 private val Night = Color(0xFF1B1D19)
 private val NightSurface = Color(0xFF292C26)
 private val WarmWhite = Color(0xFFF4F3ED)
-private val Amber = Color(0xFFC28A3A)
+private val Bronze = Color(0xFFA97942)
 
 private val LightColors = lightColorScheme(
     primary = Olive,
     onPrimary = Color.White,
-    secondary = Amber,
-    onSecondary = Color.White,
+    primaryContainer = PaleOlive,
+    onPrimaryContainer = Ink,
+    secondary = Bronze,
+    onSecondary = Ink,
+    secondaryContainer = WarmStone,
+    onSecondaryContainer = Ink,
     background = Paper,
     onBackground = Ink,
     surface = Paper,
     onSurface = Ink,
     surfaceVariant = PaleOlive,
     onSurfaceVariant = MutedInk,
+    outline = Color(0xFF85877D),
+    outlineVariant = Color(0xFFD4D2C8),
 )
 
 private val DarkColors = darkColorScheme(
     primary = Color(0xFFBBC5A9),
     onPrimary = Night,
+    primaryContainer = Color(0xFF424A39),
+    onPrimaryContainer = WarmWhite,
     secondary = Color(0xFFE0B16A),
     onSecondary = Night,
+    secondaryContainer = Color(0xFF4B3A25),
+    onSecondaryContainer = WarmWhite,
     background = Night,
     onBackground = WarmWhite,
     surface = NightSurface,
@@ -61,6 +72,12 @@ private val HadithTypography = Typography(
         fontWeight = FontWeight.Normal,
         fontSize = 28.sp,
         lineHeight = 38.sp,
+    ),
+    headlineSmall = TextStyle(
+        fontFamily = FontFamily.Serif,
+        fontWeight = FontWeight.Normal,
+        fontSize = 24.sp,
+        lineHeight = 34.sp,
     ),
     titleLarge = TextStyle(
         fontWeight = FontWeight.Medium,
