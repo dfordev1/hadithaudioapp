@@ -59,12 +59,12 @@ internal fun ReaderScreen(state: ReadingState, audio: AudioUiState, action: Read
             item {
                 if (!state.focused) {
                     Eyebrow(current.entry.book, Modifier.padding(top = 14.dp))
-                    Text("Hadith ${current.ref.normalizedNumber}", Modifier.padding(top = 8.dp, bottom = 20.dp), style = MaterialTheme.typography.headlineLarge)
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Choice("Reading", !state.study) { if (state.study) action(ReadingAction.ToggleStudy) }
-                        Choice("Study", state.study) { if (!state.study) action(ReadingAction.ToggleStudy) }
+                    Text("Hadith ${current.ref.normalizedNumber}", Modifier.padding(top = 8.dp, bottom = 14.dp), style = MaterialTheme.typography.titleMedium)
+                    Row(Modifier.fillMaxWidth()) {
+                        ReadingTab("Reading", !state.study, Modifier.weight(1f)) { if (state.study) action(ReadingAction.ToggleStudy) }
+                        ReadingTab("Study", state.study, Modifier.weight(1f)) { if (!state.study) action(ReadingAction.ToggleStudy) }
                     }
-                    Rule(Modifier.padding(top = 14.dp, bottom = 22.dp))
+                    Spacer(Modifier.height(28.dp))
                     if (state.study) Text("Tap a word to hear it or explore its meaning.", Modifier.padding(bottom = 18.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else Eyebrow("${current.ref.title} · ${current.ref.normalizedNumber}", Modifier.padding(top = 28.dp, bottom = 32.dp))
             }
@@ -92,7 +92,7 @@ internal fun ReaderScreen(state: ReadingState, audio: AudioUiState, action: Read
 
 @Composable
 private fun ArabicPassage(state: ReadingState, audio: AudioUiState, action: ReadingDispatch) {
-    val words = remember(state.current, audio.timedWords) { displayedReadingWords(state, audio) }
+    val words = remember(state.current, audio.timedWords, audio.timedMeanings) { displayedReadingWords(state, audio) }
     val active = if (audio.isPlaying) wordIndexAtTiming(audio.positionSeconds, audio.wordTimings) else -1
     val settings = state.settings
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
@@ -229,23 +229,28 @@ private fun WordSheet(state: ReadingState, audio: AudioUiState, action: ReadingD
     val word = displayedReadingWords(state, audio).getOrNull(state.wordIndex ?: -1) ?: return
     val ref = state.current?.ref ?: return
     val saved = state.library.words.any { it.key == SavedWord(ref, word).key }
-    Text("A word, in context", style = MaterialTheme.typography.headlineSmall)
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Eyebrow("Word meaning", Modifier.weight(1f))
+        ReadingIcon(Icons.Outlined.Close, "Close word meaning", onClick = { action(ReadingAction.Sheet(ReaderSheet.NONE)) })
+    }
     Text(word.arabic, Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 6.dp), fontFamily = state.settings.typeface.family(), fontSize = 44.sp, lineHeight = 72.sp, textAlign = TextAlign.Center)
     if (word.transliteration.isNotBlank()) Text(word.transliteration, Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    Spacer(Modifier.height(24.dp)); Rule()
-    SettingRow("English", caption = word.gloss.ifBlank { "Meaning unavailable for this word" })
-    if (word.urduGloss.isNotBlank()) SettingRow("Urdu", caption = word.urduGloss)
-    word.root?.takeIf { it.isNotBlank() }?.let { SettingRow("Root", it) }
-    word.grammaticalCategory?.takeIf { it.isNotBlank() }?.let { SettingRow("Word form", caption = it) }
+    Text(word.gloss.ifBlank { "Meaning unavailable for this word" }, Modifier.fillMaxWidth().padding(top = 18.dp), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+    if (word.urduGloss.isNotBlank()) Text(word.urduGloss, Modifier.fillMaxWidth().padding(top = 12.dp), fontFamily = ReadingNaskh, fontSize = 22.sp, textAlign = TextAlign.Center)
     Spacer(Modifier.height(20.dp))
-    PrimaryAction("Hear this word", Modifier.fillMaxWidth(), enabled = audio.canPlay() && audio.wordTimings.any { it.wordIndex == state.wordIndex }) { action(ReadingAction.HearWord) }
-    TextButton({ action(ReadingAction.SaveWord(word)) }, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Icon(if (saved) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder, null, Modifier.padding(end = 8.dp).size(18.dp)); Text(if (saved) "Remove saved word" else "Save word") }
-    TextButton({ action(ReadingAction.Go(ReadingPage.REPORT)) }, Modifier.fillMaxWidth()) { Text("Report an issue with this word") }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        OutlinedButton({ action(ReadingAction.HearWord) }, Modifier.weight(1f).heightIn(min = 52.dp), enabled = audio.canPlay() && audio.wordTimings.any { it.wordIndex == state.wordIndex }, shape = RoundedCornerShape(8.dp)) { Icon(Icons.Outlined.VolumeUp, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Hear word") }
+        OutlinedButton({ action(ReadingAction.SaveWord(word)) }, Modifier.weight(1f).heightIn(min = 52.dp), shape = RoundedCornerShape(8.dp)) { Icon(if (saved) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(if (saved) "Saved" else "Save word") }
+    }
+    Spacer(Modifier.height(20.dp)); Rule()
+    word.root?.takeIf { it.isNotBlank() }?.let { SettingRow("Root", it) }
+    SettingRow("In ${ref.title} · ${ref.normalizedNumber}", onClick = { action(ReadingAction.Sheet(ReaderSheet.NONE)) })
+    TextButton({ action(ReadingAction.Go(ReadingPage.REPORT)) }, Modifier.fillMaxWidth()) { Text("Report an issue") }
 }
 
 @Composable
 private fun PlaybackSheet(state: ReadingState, action: ReadingDispatch) {
-    Text("Make time to listen", style = MaterialTheme.typography.headlineSmall)
+    Text("Playback", style = MaterialTheme.typography.headlineSmall)
     Eyebrow("Playback speed", Modifier.padding(top = 24.dp, bottom = 12.dp))
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf(.75f, 1f, 1.25f, 1.5f, 2f).forEach { speed -> Choice("${speed.clean()}×", state.settings.speed == speed) { action(ReadingAction.Settings(state.settings.copy(speed = speed))) } }

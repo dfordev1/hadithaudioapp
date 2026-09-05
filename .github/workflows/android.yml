@@ -71,7 +71,7 @@ jobs:
           disable-animations: true
           script: |
             ./gradlew :app:connectedDebugAndroidTest --no-daemon
-            adb pull /sdcard/Android/data/to.hadith.audio.debug/files/reading-screens app/build/reading-screens
+            adb pull /sdcard/Pictures/hadith-ui app/build/reading-screens
       - name: Upload device screenshots and results
         if: always()
         uses: actions/upload-artifact@v4

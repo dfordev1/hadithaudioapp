@@ -142,11 +142,11 @@ internal object ReadingCodec {
     }
     fun timing(value: HadithTiming): String = encodeJson(mapOf("audio" to value.audioUrl, "duration" to value.durationSeconds,
         "synthetic" to value.isSynthetic, "tokens" to value.tokens.map { mapOf("text" to it.text, "start" to it.startSeconds,
-            "end" to it.endSeconds, "displayStart" to it.displayStartSeconds, "displayEnd" to it.displayEndSeconds) }))
+            "end" to it.endSeconds, "displayStart" to it.displayStartSeconds, "displayEnd" to it.displayEndSeconds, "en" to it.gloss, "ur" to it.urduGloss) }))
     fun timing(json: String): HadithTiming {
         val m = JsonLite.parse(json) as Map<*, *>
         val tokens = m.list("tokens").map { val t = it as Map<*, *>; TimingToken(t.text("text"), t.float("start", 0f), t.float("end", 0f),
-            (t["displayStart"] as? Number)?.toFloat(), (t["displayEnd"] as? Number)?.toFloat()) }
+            (t["displayStart"] as? Number)?.toFloat(), (t["displayEnd"] as? Number)?.toFloat(), t.text("en"), t.text("ur")) }
         require(tokens.isNotEmpty() && tokens.all { it.startSeconds.isFinite() && it.endSeconds.isFinite() && it.endSeconds >= it.startSeconds })
         return HadithTiming(validateTrustedMediaUrl(m.text("audio")), m.float("duration", 0f), tokens, m["synthetic"] == true)
     }

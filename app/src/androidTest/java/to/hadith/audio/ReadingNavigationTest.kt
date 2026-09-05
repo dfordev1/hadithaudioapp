@@ -10,7 +10,7 @@ class ReadingNavigationTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
     @Test fun appearancePersistsAndNavigationSurvivesActivityRecreation() {
-        compose.onNodeWithText("Your library").assertIsDisplayed()
+        compose.onAllNodesWithText("Library", substring = false)[0].assertIsDisplayed()
         compose.onNodeWithContentDescription("Settings").performClick()
         compose.onNodeWithText("Appearance").performClick()
         compose.onNodeWithContentDescription("Sepia appearance").performClick()
@@ -19,7 +19,7 @@ class ReadingNavigationTest {
         compose.activityRule.scenario.recreate()
         compose.onNodeWithContentDescription("Dark appearance").assertIsSelected()
         compose.onNodeWithContentDescription("Back").performClick()
-        compose.onNodeWithText("A space of your own").assertIsDisplayed()
+        compose.onNodeWithText("Your reading space").assertIsDisplayed()
         compose.onNodeWithContentDescription("Back").performClick()
         compose.onNodeWithText("Saved", substring = false).performClick()
         compose.onNodeWithText("Keep a passage close").assertIsDisplayed()

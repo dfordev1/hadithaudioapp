@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,6 +61,16 @@ internal fun Choice(label: String, selected: Boolean, modifier: Modifier = Modif
         colors = ButtonDefaults.textButtonColors(contentColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = .55f) else androidx.compose.ui.graphics.Color.Transparent)) {
         Text(label, textAlign = TextAlign.Center)
+    }
+}
+
+@Composable
+internal fun ReadingTab(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Column(modifier.clickable(role = Role.Tab, onClick = onClick).semantics { this.selected = selected }, horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 8.dp, vertical = 12.dp), contentAlignment = Alignment.Center) {
+            Text(label, fontFamily = ReadingSerif, fontSize = 16.sp, textAlign = TextAlign.Center, color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Box(Modifier.fillMaxWidth().height(if (selected) 2.dp else .5.dp).background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant))
     }
 }
 
@@ -125,12 +136,13 @@ internal fun LoadingReading() {
 }
 
 @Composable
-internal fun PassageRow(record: ReadingRecord, saved: Boolean, onOpen: () -> Unit, onSave: (() -> Unit)? = null, subtitle: String? = null) {
+internal fun PassageRow(record: ReadingRecord, saved: Boolean, onOpen: () -> Unit, onSave: (() -> Unit)? = null, subtitle: String? = null, showArabic: Boolean = true) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f).clickable(onClick = onOpen).padding(vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("${record.ref.title} · ${record.ref.normalizedNumber}", style = MaterialTheme.typography.titleMedium)
             Text(subtitle ?: record.entry.book, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(record.entry.arabic, Modifier.fillMaxWidth(), fontFamily = ReadingArabic, fontSize = 24.sp, lineHeight = 38.sp, textAlign = TextAlign.End, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (showArabic) Text(record.entry.arabic, Modifier.fillMaxWidth(), fontFamily = ReadingArabic, fontSize = 24.sp, lineHeight = 38.sp, textAlign = TextAlign.End, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (record.entry.english.isNotBlank()) Text(record.entry.english, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         if (onSave != null) ReadingIcon(if (saved) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder, if (saved) "Unsave hadith ${record.ref.normalizedNumber}" else "Save hadith ${record.ref.normalizedNumber}", tint = MaterialTheme.colorScheme.primary, onClick = onSave)
         else ReadingIcon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, "Open hadith ${record.ref.normalizedNumber}", onClick = onOpen)
@@ -147,8 +159,10 @@ internal fun AudioUiState.canPlay() = status == AudioStatus.READY && !usingTimin
 
 @Composable
 internal fun PlayButton(audio: AudioUiState, onClick: () -> Unit, large: Boolean = false) {
-    FilledIconButton(onClick, Modifier.size(if (large) 76.dp else 48.dp), enabled = audio.canPlay() || audio.isPlaying, shape = CircleShape,
-        colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)) {
+    val colors = MaterialTheme.colorScheme
+    OutlinedIconButton(onClick, Modifier.size(if (large) 76.dp else 48.dp), enabled = audio.canPlay() || audio.isPlaying, shape = CircleShape,
+        border = if (large) null else androidx.compose.foundation.BorderStroke(.75.dp, colors.outline),
+        colors = IconButtonDefaults.outlinedIconButtonColors(containerColor = if (large) colors.primary else Color.Transparent, contentColor = if (large) colors.onPrimary else colors.onSurface)) {
         if (audio.isLoading) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         else Icon(if (audio.isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow, if (audio.isPlaying) "Pause audio" else "Play audio", Modifier.size(if (large) 34.dp else 26.dp))
     }

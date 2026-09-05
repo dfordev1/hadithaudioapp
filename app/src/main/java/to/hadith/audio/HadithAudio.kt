@@ -54,6 +54,7 @@ data class AudioUiState(
     val wordTimings: List<WordTiming> = emptyList(),
     /** Exact sidecar words when the manifest, rather than the corpus, is the aligned stream. */
     val timedWords: List<String> = emptyList(),
+    val timedMeanings: List<HadithWord> = emptyList(),
     val errorMessage: String? = null,
     val usingTimingPreview: Boolean = false,
     val isSynthetic: Boolean = false,
@@ -161,6 +162,8 @@ class HadithTimingRepository {
                             endSeconds = end,
                             displayStartSeconds = displayStart,
                             displayEndSeconds = displayEnd,
+                            gloss = token.optJSONObject("gloss")?.optString("en").orEmpty(),
+                            urduGloss = token.optJSONObject("gloss")?.optString("ur").orEmpty(),
                         ),
                     )
                 }
@@ -364,6 +367,10 @@ class HadithAudioController(
             durationSeconds = durationSeconds,
             wordTimings = relativeMatches,
             timedWords = displayWords,
+            timedMeanings = if (displayWords.isEmpty()) emptyList() else absoluteMatches.map { match ->
+                val token = timing.tokens[match.tokenIndex]
+                HadithWord(token.text, "", token.gloss, null, urduGloss = token.urduGloss)
+            },
             isSynthetic = timing.isSynthetic,
         )
         previewDurationSeconds = durationSeconds

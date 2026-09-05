@@ -33,7 +33,7 @@ internal fun SettingsScreen(state: ReadingState, action: ReadingDispatch) {
     Column {
         PageToolbar("Settings", { action(ReadingAction.Back) })
         Column(Modifier.verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
-            PageHeading("A space of your own", "Simple choices for a quieter reading experience.")
+            PageHeading("Your reading space")
             Eyebrow("Reading", Modifier.padding(bottom = 8.dp))
             SettingRow("Appearance", state.settings.appearance.label, onClick = { action(ReadingAction.Go(ReadingPage.APPEARANCE)) })
             SettingRow("Translation language", state.settings.language.label, onClick = { action(ReadingAction.Sheet(ReaderSheet.LANGUAGE)) })
@@ -58,7 +58,7 @@ internal fun AppearanceScreen(state: ReadingState, action: ReadingDispatch) {
     Column {
         PageToolbar("Appearance", { action(ReadingAction.Back) })
         Column(Modifier.verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
-            PageHeading("Read with ease")
+            Spacer(Modifier.height(24.dp))
             Eyebrow("Page tone", Modifier.padding(bottom = 16.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 ReadingAppearance.entries.forEach { appearance ->
@@ -77,9 +77,9 @@ internal fun AppearanceScreen(state: ReadingState, action: ReadingDispatch) {
             Surface(Modifier.fillMaxWidth().padding(vertical = 28.dp), color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(8.dp)) {
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Eyebrow("Reading preview")
-                    Text(FirstHadith.arabic, Modifier.fillMaxWidth().padding(top = 14.dp), fontFamily = settings.typeface.family(), fontSize = settings.arabicSize.sp,
+                    Text(FirstHadith.words.take(3).joinToString(" ") { it.arabic }, Modifier.fillMaxWidth().padding(top = 14.dp), fontFamily = settings.typeface.family(), fontSize = settings.arabicSize.sp,
                         lineHeight = (settings.arabicSize * settings.lineSpacing).sp, textAlign = TextAlign.Center)
-                    Text(FirstHadith.english, Modifier.padding(top = 14.dp), fontFamily = ReadingSerif, fontSize = settings.translationSize.sp, lineHeight = (settings.translationSize * 1.65f).sp, textAlign = TextAlign.Center)
+                    Text(FirstHadith.english.substringBefore(",") + ".", Modifier.padding(top = 14.dp), fontFamily = ReadingSerif, fontSize = settings.translationSize.sp, lineHeight = (settings.translationSize * 1.65f).sp, textAlign = TextAlign.Center)
                 }
             }
             Box {
@@ -117,17 +117,13 @@ internal fun SourcesScreen(state: ReadingState, action: ReadingDispatch) {
     Column {
         PageToolbar("Sources & about", { action(ReadingAction.Back) })
         Column(Modifier.verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            PageHeading("Made for attention", "A quiet companion for the words of Hadith.")
-            Text("Listen to a narration, follow its Arabic, and return to the passages you want to keep close.", style = MaterialTheme.typography.bodyLarge)
-            Spacer(Modifier.height(12.dp)); Rule(); Spacer(Modifier.height(12.dp))
-            Eyebrow("Text & translations")
-            Text("Arabic passages and available English and Urdu translations are served by Hadith.to’s collection data. References retain the source collection and exact hadith number, including letter suffixes.", style = MaterialTheme.typography.bodyMedium)
-            Text("Translations and word meanings vary by collection. When a source has no meaning or translation, the app says so.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(12.dp)); Eyebrow("Hadith audio")
-            Text("Recordings and word timings come from Hadith.to’s audio sources. Collections with generated narration are labelled “Synthetic narration” in the player.", style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(12.dp)); Eyebrow("On your device")
-            Text("Saved passages, words, recent reading, downloads, and preferences stay in this app’s private storage. No account is required. Optional error reports send the selected passage reference and the details you choose to submit.", style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(8.dp))
+            PageHeading("hadith.to", "Read. Listen. Reflect.")
+            Text("Hadith text, translations, and audio in one reading space.", style = MaterialTheme.typography.bodyLarge)
+            Spacer(Modifier.height(16.dp)); Rule()
+            SourceDetail("Arabic text & numbering", "Every passage keeps its source reference.", "Arabic passages come from Hadith.to’s collection data. Exact hadith numbers, including letter suffixes, are preserved.")
+            SourceDetail("Translation sources", "English and Urdu, where available.", "Translations come from Hadith.to’s collection sidecars and its versioned Hadith API source. Word meanings are shown where published with the passage or audio timing. Missing translations and meanings are labelled unavailable.")
+            SourceDetail("Audio & word timings", "Hadith recordings with synchronized Arabic.", "Recordings and word timings come from Hadith.to’s audio sources. Generated narration is labelled Synthetic narration in the player.")
+            SourceDetail("Your reading library", "Saved privately on this device.", "Saved passages, words, recent reading, downloads, and preferences stay on this device. Optional error reports send the passage reference and details you choose to submit.")
             SettingRow("Visit Hadith.to", onClick = { visit("https://www.hadith.to/") })
             state.current?.let { record -> SettingRow("Open this passage on the website", onClick = { visit(record.ref.url) }) }
             SettingRow("View source code", onClick = { visit("https://github.com/dfordev1/hadithaudioapp") })
@@ -135,6 +131,14 @@ internal fun SourcesScreen(state: ReadingState, action: ReadingDispatch) {
             SettingRow("Fonts & open-source licences", onClick = { action(ReadingAction.Go(ReadingPage.LICENCES)) })
         }
     }
+}
+
+
+@Composable
+private fun SourceDetail(title: String, caption: String, detail: String) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    SettingRow(title, caption = caption, onClick = { expanded = !expanded }, trailing = { Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) })
+    if (expanded) Text(detail, Modifier.padding(bottom = 16.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 internal val reportCategories = linkedMapOf("arabic_text" to "Arabic text", "translation" to "Translation or meaning", "audio_unavailable" to "Audio playback", "word_timing" to "Word timing", "metadata" to "Hadith reference", "other" to "Something else")
@@ -151,7 +155,7 @@ internal fun ReportScreen(state: ReadingState, audio: AudioUiState, action: Read
         PageToolbar("Report an error", { action(ReadingAction.Back) })
         if (record == null) EmptyReading("Help keep the text accurate", "Open the passage you want to report, then choose Report an error from the reader tools.", Icons.Outlined.Flag, "Open library") { action(ReadingAction.Go(ReadingPage.LIBRARY)) }
         else Column(Modifier.verticalScroll(rememberScrollState()).imePadding().padding(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
-            PageHeading("Help us improve", "Your care helps preserve a better reading experience.")
+            Spacer(Modifier.height(24.dp))
             Eyebrow("Passage reference")
             Text("${record.ref.title} · ${record.ref.normalizedNumber}", Modifier.padding(vertical = 14.dp), style = MaterialTheme.typography.titleMedium)
             Rule()

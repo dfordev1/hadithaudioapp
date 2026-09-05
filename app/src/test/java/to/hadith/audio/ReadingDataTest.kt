@@ -51,7 +51,7 @@ class ReadingDataTest {
         store.partial(ref).writeBytes(byteArrayOf(1, 2, 3))
         assertNull(store.offline(ref))
         assertTrue(store.offlineRecords().isEmpty())
-        val timing = HadithTiming(FIRST_HADITH_AUDIO_FALLBACK_URL, 1f, listOf(TimingToken("إِنَّمَا", 0f, 1f)))
+        val timing = HadithTiming(FIRST_HADITH_AUDIO_FALLBACK_URL, 1f, listOf(TimingToken("إِنَّمَا", 0f, 1f, gloss = "only", urduGloss = "بے شک")))
         store.finishDownload(ref, timing)
         assertEquals(timing, store.offline(ref)?.timing)
         assertEquals(listOf(record), store.offlineRecords())
@@ -84,5 +84,8 @@ class ReadingDataTest {
         assertEquals("غيرمطابق", words[0].arabic)
         assertEquals("", words[0].gloss)
         assertEquals(FirstHadith.words[0].gloss, words[1].gloss)
+        val published = HadithWord("غيرمطابق", "", "Published meaning", null, urduGloss = "معنی")
+        val enriched = displayedReadingWords(state, AudioUiState(timedWords = listOf(published.arabic), timedMeanings = listOf(published)))
+        assertEquals(published, enriched.single())
     }
 }

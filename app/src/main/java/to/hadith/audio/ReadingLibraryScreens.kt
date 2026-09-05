@@ -1,6 +1,7 @@
 package to.hadith.audio
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -42,18 +43,9 @@ internal fun LibraryScreen(state: ReadingState, action: ReadingDispatch) {
         }
         Rule(Modifier.padding(horizontal = 24.dp))
         LazyColumn(contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 24.dp)) {
-            item { PageHeading("Your library", "A place to listen, read, and return.") }
-            item {
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    LibraryTab.entries.forEach { tab -> Choice(tab.name.lowercase().replaceFirstChar { it.uppercase() }, state.tab == tab) { action(ReadingAction.Tab(tab)) } }
-                }
-                Rule(Modifier.padding(top = 10.dp, bottom = 20.dp))
-            }
-            if (!state.online) item { OfflineNotice { action(ReadingAction.Go(ReadingPage.DOWNLOADS)) }; Spacer(Modifier.height(20.dp)) }
-            when (state.tab) {
-                LibraryTab.COLLECTIONS -> {
-                    val recent = state.library.recent.firstOrNull()
-                    if (recent != null) item {
+            item { PageHeading("Library") }
+            val recent = state.library.recent.firstOrNull()
+                    if (recent != null && state.tab == LibraryTab.COLLECTIONS) item {
                         Eyebrow("Continue reading")
                         Surface(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 24.dp).clickable { action(ReadingAction.Open(recent.ref)) }, color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(8.dp)) {
                             Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -65,6 +57,15 @@ internal fun LibraryScreen(state: ReadingState, action: ReadingDispatch) {
                             }
                         }
                     }
+            item {
+                Row(Modifier.fillMaxWidth()) {
+                    LibraryTab.entries.forEach { tab -> ReadingTab(tab.name.lowercase().replaceFirstChar { it.uppercase() }, state.tab == tab, Modifier.weight(1f)) { action(ReadingAction.Tab(tab)) } }
+                }
+                Spacer(Modifier.height(16.dp))
+            }
+            if (!state.online) item { OfflineNotice { action(ReadingAction.Go(ReadingPage.DOWNLOADS)) }; Spacer(Modifier.height(20.dp)) }
+            when (state.tab) {
+                LibraryTab.COLLECTIONS -> {
                     item {
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             ShelfFilter.entries.forEach { filter -> Choice(filter.label, state.filter == filter) { action(ReadingAction.Filter(filter)) } }
@@ -73,12 +74,12 @@ internal fun LibraryScreen(state: ReadingState, action: ReadingDispatch) {
                     }
                     val list = CatalogCollections.filterIndexed { index, c -> when (state.filter) { ShelfFilter.ALL -> true; ShelfFilter.SIX -> index < 6; ShelfFilter.FORTY -> c.kind == CatalogCollection.Kind.FORTY } }
                     items(list, key = { it.slug }) { collection ->
-                        Row(Modifier.fillMaxWidth().clickable { action(ReadingAction.Collection(collection)) }.padding(vertical = 19.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.fillMaxWidth().clickable { action(ReadingAction.Collection(collection)) }.padding(vertical = 15.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                                Text(collection.title, style = MaterialTheme.typography.titleLarge)
+                                Text(collection.title, style = MaterialTheme.typography.titleMedium)
                                 Text(buildList { collection.bookCount?.let { add("$it books") }; collection.totalCount?.let { add("%,d hadith".format(Locale.ROOT, it)) } }.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(arabicCollections[collection.slug].orEmpty(), fontFamily = ReadingArabic, fontSize = 23.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
+                            Text(arabicCollections[collection.slug].orEmpty(), Modifier.widthIn(max = 122.dp).padding(horizontal = 8.dp), fontFamily = ReadingArabic, fontSize = 21.sp, textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                         }
                         Rule()
@@ -101,7 +102,7 @@ internal fun LibraryScreen(state: ReadingState, action: ReadingDispatch) {
                         }
                     } else {
                         if (state.library.saved.isEmpty()) item { EmptyReading("Keep a passage close", "Save a hadith while reading. You’ll find it here whenever you return.", Icons.Outlined.BookmarkBorder, "Explore collections") { action(ReadingAction.Tab(LibraryTab.COLLECTIONS)) } }
-                        items(state.savedRecords, key = { it.key }) { record -> PassageRow(record, true, { action(ReadingAction.Open(record.ref)) }, { action(ReadingAction.Save(record.ref)) }) }
+                        items(state.savedRecords, key = { it.key }) { record -> PassageRow(record, true, { action(ReadingAction.Open(record.ref)) }, { action(ReadingAction.Save(record.ref)) }, showArabic = false) }
                     }
                 }
                 LibraryTab.RECENT -> {
@@ -127,6 +128,7 @@ internal fun CollectionScreen(state: ReadingState, action: ReadingDispatch) {
             item {
                 Text(arabicCollections[state.collection.slug].orEmpty(), Modifier.fillMaxWidth().padding(top = 16.dp), fontFamily = ReadingArabic, fontSize = 30.sp, textAlign = TextAlign.End, color = MaterialTheme.colorScheme.primary)
                 PageHeading(state.collection.title, "${state.books.size} ${if (state.collection.kind == CatalogCollection.Kind.MUSNAD) "parts" else "books"} · ${state.books.sumOf { it.count }} hadith")
+                state.books.firstOrNull()?.let { first -> PrimaryAction("Start reading", Modifier.fillMaxWidth().padding(bottom = 24.dp)) { action(ReadingAction.StartBook(first)) } }
                 Eyebrow("Contents", Modifier.padding(bottom = 16.dp)); Rule()
             }
             items(state.books, key = { it.number }) { book ->
@@ -193,7 +195,7 @@ internal fun SearchScreen(state: ReadingState, action: ReadingDispatch) {
         }.take(50)
     }
     LazyColumn(Modifier.imePadding(), contentPadding = PaddingValues(24.dp)) {
-        item { PageHeading("Search", "Find a passage. Return to a meaning.") }
+        item { PageHeading("Search") }
         item {
             OutlinedTextField(state.query, { action(ReadingAction.Query(it.take(300))) }, Modifier.fillMaxWidth(), label = { Text("Number, Arabic, or English") },
                 leadingIcon = { Icon(Icons.Outlined.Search, null) }, trailingIcon = { if (query.isNotEmpty()) ReadingIcon(Icons.Outlined.Close, "Clear search", onClick = { action(ReadingAction.Query("")) }) },
@@ -229,7 +231,7 @@ internal fun DownloadsScreen(state: ReadingState, action: ReadingDispatch) {
         PageToolbar("Downloads", { action(ReadingAction.Back) })
         LazyColumn(contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
             item {
-                PageHeading("Always with you", "${state.offlineRecords.size} downloaded · ${readableBytes(state.offlineBytes)}")
+                PageHeading("Read. Listen. Offline.", "${state.offlineRecords.size} downloaded · ${readableBytes(state.offlineBytes)}")
                 ToggleRow("Download on Wi-Fi only", state.settings.wifiOnly) { action(ReadingAction.Settings(state.settings.copy(wifiOnly = it))) }
                 Spacer(Modifier.height(24.dp))
             }

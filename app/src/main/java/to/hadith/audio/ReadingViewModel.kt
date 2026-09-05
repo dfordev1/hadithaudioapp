@@ -76,6 +76,7 @@ sealed interface ReadingAction {
     data object Back : ReadingAction
     data class Collection(val value: CatalogCollection) : ReadingAction
     data class Book(val value: CatalogBook) : ReadingAction
+    data class StartBook(val value: CatalogBook) : ReadingAction
     data class Open(val ref: CatalogRef, val play: Boolean = false) : ReadingAction
     data class Tab(val value: LibraryTab) : ReadingAction
     data class Filter(val value: ShelfFilter) : ReadingAction
@@ -154,6 +155,17 @@ class ReadingViewModel(application: Application) : AndroidViewModel(application)
             ReadingAction.Back -> back()
             is ReadingAction.Collection -> selectCollection(action.value)
             is ReadingAction.Book -> selectBook(action.value)
+            is ReadingAction.StartBook -> {
+                catalogJob?.cancel()
+                mutable.update { it.copy(loading = true) }
+                catalogJob = viewModelScope.launch {
+                    try {
+                        val first = catalog.hadiths(action.value.collection.slug, action.value.number).first()
+                        open(CatalogRef(action.value.collection.slug, first.number))
+                    } catch (cancelled: CancellationException) { throw cancelled }
+                    catch (failure: Exception) { mutable.update { it.copy(loading = false, error = catalogError(failure)) } }
+                }
+            }
             is ReadingAction.Open -> open(action.ref, action.play)
             is ReadingAction.Tab -> mutable.update { it.copy(tab = action.value) }
             is ReadingAction.Filter -> mutable.update { it.copy(filter = action.value) }
@@ -402,9 +414,11 @@ internal fun displayedReadingWords(state: ReadingState, audio: AudioUiState): Li
     if (audio.timedWords.isEmpty()) return source
     // Keep sidecar Arabic authoritative; bring over a gloss only for the corresponding source token.
     var cursor = 0
-    return audio.timedWords.map { text ->
+    return audio.timedWords.mapIndexed { index, text ->
         val found = (cursor until source.size).firstOrNull { normalizeArabicForTiming(source[it].arabic) == normalizeArabicForTiming(text) }
-        if (found == null) HadithWord(text, "", "", null)
-        else source[found].copy(arabic = text).also { cursor = found + 1 }
+        val original = if (found == null) HadithWord(text, "", "", null)
+            else source[found].copy(arabic = text).also { cursor = found + 1 }
+        val aligned = audio.timedMeanings.getOrNull(index)
+        if (aligned?.arabic != text) original else original.copy(gloss = aligned.gloss.ifBlank { original.gloss }, urduGloss = aligned.urduGloss.ifBlank { original.urduGloss })
     }
 }

@@ -34,6 +34,8 @@ data class TimingToken(
     val endSeconds: Float,
     val displayStartSeconds: Float? = null,
     val displayEndSeconds: Float? = null,
+    val gloss: String = "",
+    val urduGloss: String = "",
 )
 
 data class HadithTiming(

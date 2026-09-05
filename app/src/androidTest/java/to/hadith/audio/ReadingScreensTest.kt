@@ -1,17 +1,20 @@
 package to.hadith.audio
 
 import android.graphics.Bitmap
+import android.content.ContentValues
+import android.provider.MediaStore
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.test.platform.app.InstrumentationRegistry
-import java.io.File
+import androidx.test.filters.SdkSuppress
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 
+@SdkSuppress(minSdkVersion = 29)
 class ReadingScreensTest {
     @get:Rule val compose = createComposeRule()
     private val ref = CatalogRef("bukhari", "1")
@@ -82,9 +85,16 @@ class ReadingScreensTest {
     private fun capture(name: String) {
         compose.waitForIdle()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val folder = File(instrumentation.targetContext.getExternalFilesDir(null), "reading-screens").apply { mkdirs() }
         val bitmap = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
-        File(folder, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        // Shared test images survive Gradle uninstalling the test app after the run.
+        val resolver = instrumentation.targetContext.contentResolver
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, "$name.png")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/hadith-ui")
+        }
+        val uri = requireNotNull(resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values))
+        requireNotNull(resolver.openOutputStream(uri)).use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
         assertTrue(bitmap.width > 0 && bitmap.height > 0)
         bitmap.recycle()
     }
