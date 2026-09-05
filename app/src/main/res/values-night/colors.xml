@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="sacred_ink">#F4F3ED</color>
-    <color name="sacred_paper">#1B1D19</color>
-    <color name="sacred_olive">#BBC5A9</color>
-    <color name="sacred_amber">#E0B16A</color>
+    <color name="sacred_ink">#E8EBEC</color>
+    <color name="sacred_paper">#171C20</color>
+    <color name="sacred_olive">#B0B8BE</color>
+    <color name="sacred_amber">#C3AA73</color>
 </resources>

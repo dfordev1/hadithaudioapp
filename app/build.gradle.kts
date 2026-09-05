@@ -28,8 +28,8 @@ android {
         applicationId = "to.hadith.audio"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.5.0"
+        versionCode = 6
+        versionName = "0.6.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -92,6 +92,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.17.0")
     implementation("androidx.activity:activity-compose:1.12.4")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("androidx.media3:media3-exoplayer:1.10.1")
     implementation("androidx.compose.ui:ui")
@@ -100,6 +101,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
