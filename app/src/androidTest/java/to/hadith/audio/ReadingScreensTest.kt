@@ -85,6 +85,10 @@ class ReadingScreensTest {
     private fun capture(name: String) {
         compose.waitForIdle()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
+        // Wait for Android's visible window and accessibility events to settle too.
+        // Compose can be idle one frame before SurfaceFlinger displays the new page.
+        instrumentation.waitForIdleSync()
+        instrumentation.uiAutomation.waitForIdle(150, 5000)
         val bitmap = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
         // Shared test images survive Gradle uninstalling the test app after the run.
         val resolver = instrumentation.targetContext.contentResolver

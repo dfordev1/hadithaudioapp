@@ -1,6 +1,7 @@
 package to.hadith.audio
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -16,6 +17,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -156,6 +161,26 @@ internal fun clockTime(seconds: Float): String {
 }
 internal fun readableBytes(bytes: Long): String = if (bytes < 1_048_576) "${(bytes / 1024).coerceAtLeast(0)} KB" else "%.1f MB".format(Locale.ROOT, bytes / 1_048_576.0)
 internal fun AudioUiState.canPlay() = status == AudioStatus.READY && !usingTimingPreview
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun ReadingSliderControl(value: Float, onChange: (Float) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, valueRange: ClosedFloatingPointRange<Float>) {
+    val color = MaterialTheme.colorScheme.primary.copy(alpha = if (enabled) 1f else .35f)
+    val track = MaterialTheme.colorScheme.outlineVariant
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    Slider(value, onChange, modifier.heightIn(min = 48.dp), enabled = enabled, valueRange = valueRange,
+        thumb = { Box(Modifier.size(14.dp).background(color, CircleShape)) },
+        track = { slider ->
+            Canvas(Modifier.fillMaxWidth().height(3.dp)) {
+                val fraction = ((slider.value - valueRange.start) / (valueRange.endInclusive - valueRange.start)).coerceIn(0f, 1f)
+                val start = Offset(if (rtl) size.width else 0f, size.height / 2)
+                val end = Offset(if (rtl) 0f else size.width, size.height / 2)
+                val progress = Offset(if (rtl) size.width * (1 - fraction) else size.width * fraction, size.height / 2)
+                drawLine(track, start, end, size.height, StrokeCap.Round)
+                drawLine(color, start, progress, size.height, StrokeCap.Round)
+            }
+        })
+}
 
 @Composable
 internal fun PlayButton(audio: AudioUiState, onClick: () -> Unit, large: Boolean = false) {

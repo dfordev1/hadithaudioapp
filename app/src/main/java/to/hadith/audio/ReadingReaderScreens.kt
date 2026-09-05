@@ -133,7 +133,7 @@ internal fun TranslationBlock(entry: HadithEntry, settings: ReadingSettings) {
 @Composable
 internal fun AudioProgress(audio: AudioUiState, action: ReadingDispatch) {
     Column {
-        Slider(audio.positionSeconds.coerceIn(0f, audio.durationSeconds.coerceAtLeast(1f)), { action(ReadingAction.Seek(it)) }, Modifier.fillMaxWidth().semantics { contentDescription = "Audio position" },
+        ReadingSliderControl(audio.positionSeconds.coerceIn(0f, audio.durationSeconds.coerceAtLeast(1f)), { action(ReadingAction.Seek(it)) }, Modifier.fillMaxWidth().semantics { contentDescription = "Audio position" },
             enabled = audio.canPlay(), valueRange = 0f..audio.durationSeconds.coerceAtLeast(1f))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(clockTime(audio.positionSeconds), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -151,7 +151,7 @@ internal fun ReaderDock(state: ReadingState, audio: AudioUiState, action: Readin
             Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
                 Text(if (audio.usingTimingPreview) "Audio unavailable" else if (audio.isLoading) "Preparing audio…" else "${clockTime(audio.positionSeconds)} / ${clockTime(audio.durationSeconds)}", style = MaterialTheme.typography.bodySmall)
                 if (audio.usingTimingPreview) TextButton({ action(ReadingAction.Retry) }, contentPadding = PaddingValues(0.dp)) { Text("Retry audio") }
-                else Slider(audio.positionSeconds.coerceIn(0f, audio.durationSeconds.coerceAtLeast(1f)), { action(ReadingAction.Seek(it)) }, Modifier.fillMaxWidth().semantics { contentDescription = "Audio position" }, enabled = audio.canPlay(), valueRange = 0f..audio.durationSeconds.coerceAtLeast(1f))
+                else ReadingSliderControl(audio.positionSeconds.coerceIn(0f, audio.durationSeconds.coerceAtLeast(1f)), { action(ReadingAction.Seek(it)) }, Modifier.fillMaxWidth().semantics { contentDescription = "Audio position" }, enabled = audio.canPlay(), valueRange = 0f..audio.durationSeconds.coerceAtLeast(1f))
             }
             TextButton({ action(ReadingAction.Sheet(ReaderSheet.PLAYBACK)) }, Modifier.heightIn(min = 48.dp)) { Text("${state.settings.speed.clean()}×") }
         }

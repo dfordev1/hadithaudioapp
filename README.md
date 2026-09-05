@@ -14,7 +14,7 @@ The app includes:
 - Saved hadiths and words, recent reading, and audio resume positions stored privately on the device.
 - Real Media3 playback, exact word playback, speed control, repeat, next-hadith playback, and sleep timers.
 - Audio and text downloads for individual hadiths or a book, real byte progress, Wi-Fi-only controls, retry, cancellation, and removal.
-- Search by exact hadith number within a collection, including letter suffixes; text search across passages opened on this device.
+- Search by exact hadith number within a collection, including letter suffixes; text search across the 500 most recently cached passages on this device.
 - Sources, font licences, native sharing and copying, and an optional passage-specific error report form.
 - Explicit empty, loading, offline, missing-translation, and audio-unavailable states.
 

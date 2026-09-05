@@ -102,7 +102,7 @@ private fun ReadingSlider(title: String, valueLabel: String, value: Float, range
             Text(title, style = MaterialTheme.typography.bodyMedium)
             Text(valueLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
         }
-        Slider(value, onChange, Modifier.fillMaxWidth().semantics { contentDescription = title }, valueRange = range)
+        ReadingSliderControl(value, onChange, Modifier.fillMaxWidth().semantics { contentDescription = title }, valueRange = range)
         Rule()
     }
 }

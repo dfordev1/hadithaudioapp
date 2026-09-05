@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -36,27 +37,23 @@ private val arabicCollections = mapOf("bukhari" to "صحيح البخاري", "m
 internal fun LibraryScreen(state: ReadingState, action: ReadingDispatch) {
     var savedWords by rememberSaveable { mutableStateOf(false) }
     Column {
-        Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 12.dp).heightIn(min = 72.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 12.dp).heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("hadith.to", Modifier.weight(1f), fontFamily = ReadingSerif, fontSize = 27.sp, letterSpacing = (-.8).sp)
             ReadingIcon(Icons.Outlined.FileDownload, "Downloads", onClick = { action(ReadingAction.Go(ReadingPage.DOWNLOADS)) })
             ReadingIcon(Icons.Outlined.Settings, "Settings", onClick = { action(ReadingAction.Go(ReadingPage.SETTINGS)) })
         }
-        Rule(Modifier.padding(horizontal = 24.dp))
         LazyColumn(contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 24.dp)) {
-            item { PageHeading("Library") }
+            item { Text("Library", Modifier.padding(top = 8.dp, bottom = 20.dp), style = MaterialTheme.typography.headlineLarge) }
             val recent = state.library.recent.firstOrNull()
-                    if (recent != null && state.tab == LibraryTab.COLLECTIONS) item {
-                        Eyebrow("Continue reading")
-                        Surface(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 24.dp).clickable { action(ReadingAction.Open(recent.ref)) }, color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(8.dp)) {
-                            Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text(recent.ref.title, style = MaterialTheme.typography.titleMedium)
-                                    Text("Hadith ${recent.ref.normalizedNumber}" + if (recent.position > 0) " · ${clockTime(recent.position)}" else "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                                Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                    }
+            if (recent != null && state.tab == LibraryTab.COLLECTIONS) item {
+                Rule(Modifier.padding(bottom = 14.dp))
+                Eyebrow("Continue reading")
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { action(ReadingAction.Open(recent.ref)) }, verticalAlignment = Alignment.CenterVertically) {
+                    Text("${recent.ref.title} · ${recent.ref.normalizedNumber}", Modifier.weight(1f).padding(vertical = 12.dp), style = MaterialTheme.typography.titleMedium)
+                    Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.primary)
+                }
+                Spacer(Modifier.height(12.dp))
+            }
             item {
                 Row(Modifier.fillMaxWidth()) {
                     LibraryTab.entries.forEach { tab -> ReadingTab(tab.name.lowercase().replaceFirstChar { it.uppercase() }, state.tab == tab, Modifier.weight(1f)) { action(ReadingAction.Tab(tab)) } }
@@ -175,7 +172,7 @@ internal fun HadithListScreen(state: ReadingState, action: ReadingDispatch) {
 
 @Composable
 internal fun CatalogFailure(state: ReadingState, action: ReadingDispatch) {
-    Column(Modifier.padding(horizontal = 24.dp)) {
+    Column(Modifier.padding(horizontal = 24.dp).verticalScroll(rememberScrollState())) {
         EmptyReading(if (state.online) "A moment of interruption" else "Read wherever you are", state.error ?: "You’re offline. Downloaded passages remain available.", if (state.online) Icons.Outlined.CloudOff else Icons.Outlined.WifiOff, "Try again") { action(ReadingAction.Retry) }
         if (!state.online) OutlinedButton({ action(ReadingAction.Go(ReadingPage.DOWNLOADS)) }, Modifier.fillMaxWidth().heightIn(min = 52.dp), shape = RoundedCornerShape(8.dp)) { Text("Open downloads") }
     }
@@ -212,7 +209,7 @@ internal fun SearchScreen(state: ReadingState, action: ReadingDispatch) {
                 }
             }
             if (exact) PrimaryAction("Find hadith $query", Modifier.fillMaxWidth().padding(top = 12.dp), enabled = !state.searching) { keyboard?.hide(); action(ReadingAction.Find) }
-            Text("Look up any hadith number within a collection. Arabic and English text search covers passages opened on this device.", Modifier.padding(vertical = 20.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Look up any hadith number within a collection. Text search covers the 500 most recently cached passages on this device.", Modifier.padding(vertical = 20.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Rule()
         }
         if (state.searching) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(vertical = 20.dp)) }
