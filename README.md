@@ -1,66 +1,51 @@
 # Hadith.to Android
 
-A calm, native Android companion for listening to, reading, and studying hadith.
+A quiet, native Android companion for listening to, reading, and studying Hadith.
 
-## Product direction
+## The reading experience
 
-The app opens directly into a hadith instead of a dashboard. The reading surface keeps the Arabic text central and reveals translation, study tools, and navigation only when they are useful.
+Version 0.6 applies the approved Android designs across the app. Cool stone pages, matte bronze controls, Source Serif headings, and bundled Arabic fonts give the library, reader, and player one consistent visual language. The app opens in Library, with Listen and Search always within reach on browsing screens.
 
 The app includes:
 
-- lazy browsing of all 12 live Hadith.to collections and 65,647 indexed records
-- the major books, Riyad as-Salihin, Musnad Ahmad, and three forty-hadith collections
-- collection-scoped exact-number lookup, including alphanumeric report IDs
-- real Media3 playback wherever a Hadith.to timing sidecar is published
-- synchronized highlighting from the timing sidecar's authoritative Arabic stream
-- English, Urdu, and bilingual reading
-- quiet listening and focused study modes
-- an Arabic-led reading surface with a quiet juniper-and-chalk listening system
-- a persistent mini-player across listening, library, and search
-- compact source, book, and hadith references without an isnad UI
-- local preview text search plus exact-number lookup across every collection
-- accessible, RTL-aware Jetpack Compose UI
-- a clearly labelled silent timing preview when audio is unavailable
+- All 12 live collections and 65,647 indexed records, with collection contents and book-level browsing.
+- Reading and Study modes, selectable English/Urdu translations, word details, synchronized word highlighting, and a focused reader.
+- Light, sepia, and dark appearances; Scheherazade New, Amiri, or Noto Naskh Arabic; adjustable text sizes, line spacing, and word spacing.
+- Saved hadiths and words, recent reading, and audio resume positions stored privately on the device.
+- Real Media3 playback, exact word playback, speed control, repeat, next-hadith playback, and sleep timers.
+- Audio and text downloads for individual hadiths or a book, real byte progress, Wi-Fi-only controls, retry, cancellation, and removal.
+- Search by exact hadith number within a collection, including letter suffixes; text search across the 500 most recently cached passages on this device.
+- Sources, font licences, native sharing and copying, and an optional passage-specific error report form.
+- Explicit empty, loading, offline, missing-translation, and audio-unavailable states.
 
-## Stack
+Recordings use the timing sidecar's authoritative Arabic stream. A missing recording is shown as unavailable and cannot start silent playback. Synthetic narration in the forty-hadith datasets is disclosed in the player. Available translations and word meanings come from the existing sources; missing meanings are never invented.
 
-- Kotlin
-- Jetpack Compose + Material 3
-- AndroidX Lifecycle
-- Media3 / ExoPlayer
-- Kotlin coroutines
-- a single, intentionally small app module
+## Offline and lifecycle behavior
 
-## Status
+Completed recordings, timing files, text, saved items, recent reading, and preferences survive an app restart. Catalog payloads are cached on disk. A bundled opening passage of Bukhari 1 remains readable without a connection.
 
-The sacred reader and the complete live Hadith.to shelf are implemented: Sahih al-Bukhari, Sahih Muslim, Sunan Abi Dawud, Jami at-Tirmidhi, Sunan an-Nasa'i, Sunan Ibn Majah, Muwatta Malik, Riyad as-Salihin, Musnad Ahmad, Nawawi's Forty, Forty Hadith Qudsi, and Shah Waliullah's Forty. Collection indexes and book payloads load only when opened; translations load only for the selected narration and are labelled unavailable when the upstream source does not publish them.
+Keep the app open while downloading. The active queue is retained through screen and Activity changes but does not survive process termination. Paused transfers restart from the beginning when retried; only completed recordings appear as available offline.
 
-The opening offline passage remains available immediately. Catalog records use the production Hadith.to Arabic corpora, translation endpoints, timing manifests, and recordings. Records without a published sidecar stay readable and are labelled audio-unavailable rather than borrowing another narration's recording. Synthetic recitations in the forty-hadith datasets are disclosed in the player.
+Playback handles audio focus and headphone disconnection. This release does not provide a background MediaSession service or notification controls; foreground listening is supported.
 
-Playback is foreground-only in this release. It handles audio focus and headphone disconnects, but a MediaSession service and notification controls are still required before background playback can be promised.
+## Stack and build
 
-## Build
-
-Open the project in a current stable Android Studio with JDK 17 and Android SDK 36 installed. CI uses Gradle 8.13.
-
-```bash
-./gradlew :app:assembleDebug
-```
-
-Run the full local verification with:
+Kotlin, Jetpack Compose, Material 3, AndroidX Lifecycle, Media3, and coroutines. JDK 17, Android SDK 36, minimum Android 8.0, Gradle 8.13.
 
 ```bash
 ./gradlew :app:lintDebug :app:testDebugUnitTest :app:assembleDebug :app:bundleRelease
 ```
 
-Every pull request runs the same checks on GitHub Actions and uploads an installable debug APK plus an unsigned, minified release AAB. Play Store signing and upload remain secret-backed release steps; no keystore material belongs in this repository.
+For device tests with an emulator attached:
 
-The manual `Android Signed Release` workflow can produce a verified signed AAB once the protected GitHub environment and four signing secrets in [docs/RELEASE.md](docs/RELEASE.md) are configured.
+```bash
+./gradlew :app:connectedDebugAndroidTest
+```
 
-Release documentation includes the current [privacy policy](docs/PRIVACY.md).
+Pull requests run lint, unit tests, APK/AAB builds, and Android device checks. CI captures the 20 approved screen states plus large-type and unavailable-audio states, and checks reader actions, navigation, appearance persistence, and Activity recreation. Download `hadithaudioapp-debug-apk` from the latest successful Android workflow for an installable debug build.
 
-## Data boundary
+The separate [signed release workflow](docs/RELEASE.md) uses protected signing secrets. No keystore material belongs in this repository.
 
-Arabic catalog data comes from `www.hadith.to`, translations from Hadith.to and the versioned Hadith API snapshot on jsDelivr, and timing/audio from the Hadith.to CDN. The app has no accounts, ads, or analytics. Normal CDN/server request logs may still receive network metadata such as an IP address when online content is opened.
+## Data and privacy
 
-Catalog payloads are cached in memory for the current app session. Full-catalog text search and durable offline downloads are intentionally not claimed yet.
+Arabic data comes from Hadith.to, translations from Hadith.to and its versioned Hadith API snapshot on jsDelivr, and recordings/timings from the existing Hadith.to CDN. The app has no accounts, ads, or analytics. Optional error reports are sent only when the reader presses Send report. See the [privacy policy](docs/PRIVACY.md).
