@@ -5,6 +5,7 @@ import android.content.ContentValues
 import android.provider.MediaStore
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
@@ -83,13 +84,13 @@ class ReadingScreensTest {
     }
 
     private fun capture(name: String) {
+        compose.mainClock.advanceTimeBy(500)
         compose.waitForIdle()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        // Wait for Android's visible window and accessibility events to settle too.
-        // Compose can be idle one frame before SurfaceFlinger displays the new page.
-        instrumentation.waitForIdleSync()
-        instrumentation.uiAutomation.waitForIdle(150, 5000)
-        val bitmap = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+        // Capture the rendered Compose window, including the dialog root when open.
+        // PixelCopy waits for drawing; UiAutomation can return the previous device frame.
+        val roots = compose.onAllNodes(isRoot())
+        val bitmap = roots[roots.fetchSemanticsNodes().lastIndex].captureToImage().asAndroidBitmap()
         // Shared test images survive Gradle uninstalling the test app after the run.
         val resolver = instrumentation.targetContext.contentResolver
         val values = ContentValues().apply {
