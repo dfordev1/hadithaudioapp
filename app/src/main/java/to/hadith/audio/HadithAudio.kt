@@ -54,6 +54,7 @@ data class AudioUiState(
     val wordTimings: List<WordTiming> = emptyList(),
     /** Exact sidecar words when the manifest, rather than the corpus, is the aligned stream. */
     val timedWords: List<String> = emptyList(),
+    val timedMeanings: List<HadithWord> = emptyList(),
     val errorMessage: String? = null,
     val usingTimingPreview: Boolean = false,
     val isSynthetic: Boolean = false,
@@ -161,6 +162,8 @@ class HadithTimingRepository {
                             endSeconds = end,
                             displayStartSeconds = displayStart,
                             displayEndSeconds = displayEnd,
+                            gloss = token.optJSONObject("gloss")?.optString("en").orEmpty(),
+                            urduGloss = token.optJSONObject("gloss")?.optString("ur").orEmpty(),
                         ),
                     )
                 }
@@ -210,6 +213,12 @@ class HadithAudioController(
     private var previewDurationSeconds = 0f
     private var prepareGeneration = 0L
     private var activeMediaId: String? = null
+    private var wordJob: Job? = null
+    private var sleepJob: Job? = null
+    private var repeatRecording = false
+    private var sleepAtEnd = false
+    var onEnded: (() -> Unit)? = null
+    var onSleepFinished: (() -> Unit)? = null
 
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -232,6 +241,17 @@ class HadithAudioController(
                         isPlaying = false,
                         positionSeconds = 0f,
                     )
+                    if (wordJob?.isActive == true) {
+                        wordJob?.cancel()
+                        wordJob = null
+                    } else if (sleepAtEnd) {
+                        sleepAtEnd = false
+                        onSleepFinished?.invoke()
+                    } else if (repeatRecording) player.play()
+                    else {
+                        val generation = prepareGeneration
+                        scope.launch { if (generation == prepareGeneration) onEnded?.invoke() }
+                    }
                 }
             }
         }
@@ -248,12 +268,16 @@ class HadithAudioController(
     fun prepare(
         hadith: HadithEntry,
         source: HadithAudioSource = FIRST_HADITH_AUDIO_SOURCE,
+        offline: OfflineAudio? = null,
+        autoPlay: Boolean = false,
+        resumePosition: Float = 0f,
     ) {
         if (released) return
         val generation = ++prepareGeneration
         loadJob?.cancel()
         previewJob?.cancel()
         progressJob?.cancel()
+        wordJob?.cancel()
         previewJob = null
         previewDurationSeconds = hadith.durationSeconds.toFloat()
         activeMediaId = null
@@ -262,7 +286,7 @@ class HadithAudioController(
         _state.value = AudioUiState(status = AudioStatus.LOADING)
         loadJob = scope.launch {
             try {
-                val timing = timingRepository.fetch(source)
+                val timing = offline?.timing ?: timingRepository.fetch(source)
                 ensureActive()
                 if (generation != prepareGeneration) return@launch
                 val timedTokens = timing.tokens.withIndex().filter {
@@ -291,7 +315,8 @@ class HadithAudioController(
                     }
                 }
                 if (matches.isEmpty()) throw IOException("Timing manifest has no aligned words")
-                configurePlayer(timing, matches, displayWords, generation)
+                configurePlayer(timing, matches, displayWords, generation,
+                    offline?.file?.let { android.net.Uri.fromFile(it).toString() }, autoPlay, resumePosition)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
@@ -307,6 +332,9 @@ class HadithAudioController(
         absoluteMatches: List<WordTiming>,
         displayWords: List<String>,
         generation: Long,
+        localUri: String?,
+        autoPlay: Boolean,
+        resumePosition: Float,
     ) {
         if (released || generation != prepareGeneration) return
         val clipStartSeconds = absoluteMatches.minOf { it.startSeconds }
@@ -326,7 +354,7 @@ class HadithAudioController(
         val mediaId = "hadith-$generation"
         val mediaItem = MediaItem.Builder()
             .setMediaId(mediaId)
-            .setUri(timing.audioUrl)
+            .setUri(localUri ?: timing.audioUrl)
             .setClippingConfiguration(
                 MediaItem.ClippingConfiguration.Builder()
                     .setStartPositionMs(clipStartMs)
@@ -339,15 +367,22 @@ class HadithAudioController(
             durationSeconds = durationSeconds,
             wordTimings = relativeMatches,
             timedWords = displayWords,
+            timedMeanings = if (displayWords.isEmpty()) emptyList() else absoluteMatches.map { match ->
+                val token = timing.tokens[match.tokenIndex]
+                HadithWord(token.text, "", token.gloss, null, urduGloss = token.urduGloss)
+            },
             isSynthetic = timing.isSynthetic,
         )
         previewDurationSeconds = durationSeconds
         activeMediaId = mediaId
         player.setMediaItem(mediaItem)
+        player.seekTo((resumePosition.coerceIn(0f, (durationSeconds - .5f).coerceAtLeast(0f)) * 1000).toLong())
+        player.playWhenReady = autoPlay
         player.prepare()
     }
 
     fun togglePlayPause() {
+        wordJob?.cancel()
         if (released || _state.value.isLoading) return
         if (_state.value.usingTimingPreview) {
             if (_state.value.previewPlaying) stopTimingPreview() else startTimingPreview()
@@ -358,6 +393,7 @@ class HadithAudioController(
     }
 
     fun seekTo(positionSeconds: Float) {
+        wordJob?.cancel()
         if (released) return
         val duration = _state.value.durationSeconds
         val position = positionSeconds.coerceIn(0f, duration.coerceAtLeast(0f))
@@ -381,6 +417,41 @@ class HadithAudioController(
             positionSeconds = position.coerceIn(0f, duration.coerceAtLeast(0f)),
             durationSeconds = duration,
         )
+    }
+
+    fun pause() {
+        wordJob?.cancel()
+        player.pause()
+        stopTimingPreview()
+        updateFromPlayer()
+    }
+
+    fun setSpeed(speed: Float) {
+        if (!released && speed.isFinite()) player.setPlaybackSpeed(speed.coerceIn(.75f, 2f))
+    }
+
+    fun setRepeat(repeat: Boolean) { repeatRecording = repeat }
+
+    fun setSleepTimer(minutes: Int = 0, atEnd: Boolean = false) {
+        sleepJob?.cancel()
+        sleepAtEnd = atEnd
+        if (minutes > 0) sleepJob = scope.launch {
+            delay(minutes.coerceAtMost(120) * 60_000L)
+            pause()
+            onSleepFinished?.invoke()
+        }
+    }
+
+    fun playWord(index: Int) {
+        if (released || _state.value.usingTimingPreview || _state.value.isLoading) return
+        val interval = _state.value.wordTimings.firstOrNull { it.wordIndex == index } ?: return
+        seekTo(interval.startSeconds)
+        player.play()
+        val generation = prepareGeneration
+        wordJob = scope.launch {
+            while (isActive && generation == prepareGeneration && player.currentPosition / 1000f < interval.endSeconds) delay(25)
+            if (generation == prepareGeneration) { player.pause(); updateFromPlayer() }
+        }
     }
 
     private fun startPlayerProgressUpdates() {
@@ -458,6 +529,7 @@ class HadithAudioController(
         loadJob?.cancel()
         previewJob?.cancel()
         progressJob?.cancel()
+        wordJob?.cancel()
         player.stop()
         player.clearMediaItems()
         _state.value = AudioUiState()
@@ -471,6 +543,8 @@ class HadithAudioController(
         loadJob?.cancel()
         previewJob?.cancel()
         progressJob?.cancel()
+        wordJob?.cancel()
+        sleepJob?.cancel()
         scope.cancel()
         player.removeListener(listener)
         player.release()

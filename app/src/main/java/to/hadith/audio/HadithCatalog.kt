@@ -475,7 +475,7 @@ internal fun validateCatalogUrl(value: String): String {
 }
 
 /** Tiny JSON parser to keep the catalog dependency-free and unit-testable on the JVM. */
-private object JsonLite {
+internal object JsonLite {
     fun parse(input: String): Any? = Reader(input).parse()
     private class Reader(private val s: String) { var i = 0
         fun parse(): Any? { skip(); val v = value(); skip(); require(i == s.length); return v }

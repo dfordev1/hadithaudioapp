@@ -10,6 +10,7 @@ data class HadithWord(
     /** Null for words which do not have a lexical root, such as particles. */
     val root: String?,
     val grammaticalCategory: String? = null,
+    val urduGloss: String = "",
 )
 
 data class HadithEntry(
@@ -33,6 +34,8 @@ data class TimingToken(
     val endSeconds: Float,
     val displayStartSeconds: Float? = null,
     val displayEndSeconds: Float? = null,
+    val gloss: String = "",
+    val urduGloss: String = "",
 )
 
 data class HadithTiming(
@@ -127,7 +130,7 @@ val FirstHadith = HadithEntry(
     words = listOf(
         HadithWord("إِنَّمَا", "innamā", "only; indeed", null, "Particle"),
         HadithWord("الأَعْمَالُ", "al-aʿmāl", "the actions", "ع م ل"),
-        HadithWord("بِالنِّيَّاتِ", "bin-niyyāt", "by the intentions", "ن و ي"),
+        HadithWord("بِالنِّيَّاتِ", "bin-niyyāt", "by the intentions", "ن و ي", urduGloss = "نیتوں کے مطابق"),
         HadithWord("وَإِنَّمَا", "wa-innamā", "and only", null, "Particle"),
         HadithWord("لِكُلِّ", "li-kulli", "for every", "ك ل ل"),
         HadithWord("امْرِئٍ", "imriʾin", "person", "م ر أ"),
