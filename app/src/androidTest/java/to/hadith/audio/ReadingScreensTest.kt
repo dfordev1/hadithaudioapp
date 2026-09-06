@@ -89,8 +89,11 @@ class ReadingScreensTest {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         // Capture the rendered Compose window, including the dialog root when open.
         // PixelCopy waits for drawing; UiAutomation can return the previous device frame.
-        val roots = compose.onAllNodes(isRoot())
-        val bitmap = roots[roots.fetchSemanticsNodes().lastIndex].captureToImage().asAndroidBitmap()
+        val dialogs = compose.onAllNodes(isDialog())
+        val visibleWindow = if (dialogs.fetchSemanticsNodes().isNotEmpty()) dialogs[0] else compose.onRoot()
+        if (name == "07-word") compose.onNodeWithText("Hear word").assertIsDisplayed()
+        if (name == "10-playback") compose.onNodeWithText("Done", substring = false).assertIsDisplayed()
+        val bitmap = visibleWindow.captureToImage().asAndroidBitmap()
         // Shared test images survive Gradle uninstalling the test app after the run.
         val resolver = instrumentation.targetContext.contentResolver
         val values = ContentValues().apply {
